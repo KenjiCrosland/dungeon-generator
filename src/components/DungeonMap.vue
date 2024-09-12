@@ -23,19 +23,34 @@ const dungeonCanvas = ref(null);
 
 const resizeCanvas = () => {
   const canvas = dungeonCanvas.value;
-  const maxX = Math.max(...props.rooms.map(room => room.x + room.width));
-  const maxY = Math.max(...props.rooms.map(room => room.y + room.height));
-  canvas.width = maxX * props.tileSize + 20;  // Add some padding
-  canvas.height = maxY * props.tileSize + 20; // Add some padding
+  const tileSize = props.tileSize;
+
+  // Calculate minimum and maximum coordinates
+  const allX = props.rooms.flatMap(room => [room.x, room.x + room.width]);
+  const allY = props.rooms.flatMap(room => [room.y, room.y + room.height]);
+  const minX = Math.min(...allX);
+  const maxX = Math.max(...allX);
+  const minY = Math.min(...allY);
+  const maxY = Math.max(...allY);
+
+  // Calculate width and height based on min and max coordinates
+  canvas.width = (maxX - minX) * tileSize + 20;  // Add some padding
+  canvas.height = (maxY - minY) * tileSize + 20; // Add some padding
+
+  // Store minX and minY to adjust the drawing positions
+  canvas.minX = minX;
+  canvas.minY = minY;
 };
 
 const drawGrid = (ctx) => {
   const { width, height } = ctx.canvas;
-  ctx.strokeStyle = '#ddd'; // Light gray color for grid lines
-  ctx.lineWidth = 1;
+  const tileSize = props.tileSize;
+
+  ctx.strokeStyle = '#add8e6'; // Light blue color for grid lines
+  ctx.lineWidth = 0.5;
 
   // Draw vertical lines
-  for (let x = 0; x <= width; x += props.tileSize) {
+  for (let x = 0; x <= width; x += tileSize) {
     ctx.beginPath();
     ctx.moveTo(x, 0);
     ctx.lineTo(x, height);
@@ -43,7 +58,7 @@ const drawGrid = (ctx) => {
   }
 
   // Draw horizontal lines
-  for (let y = 0; y <= height; y += props.tileSize) {
+  for (let y = 0; y <= height; y += tileSize) {
     ctx.beginPath();
     ctx.moveTo(0, y);
     ctx.lineTo(width, y);
@@ -59,75 +74,74 @@ const drawRooms = (ctx) => {
 };
 
 const drawRoom = (ctx, room) => {
-  ctx.strokeStyle = '#000'; // Black color for room outlines
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = 'rgba(51, 51, 51, 0.8)'; // Dark gray color with reduced opacity
+  ctx.lineWidth = 2.5; // Thicker lines for room outlines
+  ctx.lineCap = 'round'; // Round line caps for smoother lines
 
   // Draw the room outline with doorways
   drawRoomOutline(ctx, room);
 
-  // Draw the room ID in the center of the room
+  // Draw the room number in the center of the room
   ctx.font = '16px Arial';
-  ctx.fillStyle = '#000';
-  const textX = (room.x + room.width / 2) * props.tileSize;
-  const textY = (room.y + room.height / 2) * props.tileSize;
-  ctx.fillText(`ID: ${room.id}`, textX, textY);
+  ctx.fillStyle = '#333'; // Dark gray color for text
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const textX = ((room.x - ctx.canvas.minX) + room.width / 2) * props.tileSize;
+  const textY = ((room.y - ctx.canvas.minY) + room.height / 2) * props.tileSize;
+  ctx.fillText(`${room.id}`, textX, textY);
 };
 
 const drawRoomOutline = (ctx, room) => {
   const { x, y, width, height, doorways } = room;
   const tileSize = props.tileSize;
+  const offsetX = (x - ctx.canvas.minX) * tileSize;
+  const offsetY = (y - ctx.canvas.minY) * tileSize;
+
   ctx.beginPath();
 
-  // Top outline with potential doorways
-  ctx.moveTo(x * tileSize, y * tileSize);
-  let currentX = x * tileSize;
+  // Top side with potential doorways (counting from the left)
+  ctx.moveTo(offsetX, offsetY);
+  let currentX = offsetX;
   doorways?.filter(d => d.side === 'top').forEach(doorway => {
-    ctx.lineTo((x + doorway.position) * tileSize, y * tileSize); // Draw up to the doorway
-    currentX = (x + doorway.position + 1) * tileSize;
-    ctx.moveTo(currentX, y * tileSize); // Skip the doorway
+    ctx.lineTo(offsetX + doorway.position * tileSize, offsetY);
+    currentX = offsetX + (doorway.position + 1) * tileSize;
+    ctx.moveTo(currentX, offsetY);
   });
-  ctx.lineTo((x + width) * tileSize, y * tileSize); // Complete the top side
+  ctx.lineTo(offsetX + width * tileSize, offsetY);
 
-  // Right outline with potential doorways
-  ctx.moveTo((x + width) * tileSize, y * tileSize);
-  let currentY = y * tileSize;
+  // Right side with potential doorways (counting from the top)
+  ctx.moveTo(offsetX + width * tileSize, offsetY);
+  let currentY = offsetY;
   doorways?.filter(d => d.side === 'right').forEach(doorway => {
-    ctx.lineTo((x + width) * tileSize, (y + doorway.position) * tileSize); // Draw up to the doorway
-    currentY = (y + doorway.position + 1) * tileSize;
-    ctx.moveTo((x + width) * tileSize, currentY); // Skip the doorway
+    ctx.lineTo(offsetX + width * tileSize, offsetY + doorway.position * tileSize);
+    currentY = offsetY + (doorway.position + 1) * tileSize;
+    ctx.moveTo(offsetX + width * tileSize, currentY);
   });
-  ctx.lineTo((x + width) * tileSize, (y + height) * tileSize); // Complete the right side
+  ctx.lineTo(offsetX + width * tileSize, offsetY + height * tileSize);
 
-  // Adjusted Bottom outline with doorways (right to left)
-  ctx.moveTo((x + width) * tileSize, (y + height) * tileSize);
-  currentX = (x + width) * tileSize;
+  // Bottom side with potential doorways (counting from the left)
+  ctx.moveTo(offsetX, offsetY + height * tileSize);
+  currentX = offsetX;
   doorways?.filter(d => d.side === 'bottom').forEach(doorway => {
-    // Apply manual correction by subtracting 1 from the position
-    const correctedPosition = doorway.position; // This corrects the off-by-one issue
-    const doorwayStart = (x + width - correctedPosition) * tileSize;
-    ctx.lineTo(doorwayStart, (y + height) * tileSize); // Draw up to the doorway
-    currentX = doorwayStart - tileSize;
-    ctx.moveTo(currentX, (y + height) * tileSize); // Skip the doorway
+    const doorwayStart = offsetX + doorway.position * tileSize;
+    ctx.lineTo(doorwayStart, offsetY + height * tileSize);
+    currentX = doorwayStart + tileSize;
+    ctx.moveTo(currentX, offsetY + height * tileSize);
   });
-  ctx.lineTo(x * tileSize, (y + height) * tileSize); // Complete the bottom side
+  ctx.lineTo(offsetX + width * tileSize, offsetY + height * tileSize);
 
-  // Left outline with potential doorways (already working)
-  ctx.moveTo(x * tileSize, (y + height) * tileSize);
-  currentY = (y + height) * tileSize;
+  // Left side with potential doorways (counting from the top)
+  ctx.moveTo(offsetX, offsetY);
+  currentY = offsetY;
   doorways?.filter(d => d.side === 'left').forEach(doorway => {
-    const doorwayStart = (y + height - doorway.position - 1) * tileSize;
-    ctx.lineTo(x * tileSize, doorwayStart); // Draw up to the doorway
-    currentY = doorwayStart - tileSize;
-    ctx.moveTo(x * tileSize, currentY); // Skip the doorway
+    ctx.lineTo(offsetX, offsetY + doorway.position * tileSize);
+    currentY = offsetY + (doorway.position + 1) * tileSize;
+    ctx.moveTo(offsetX, currentY);
   });
-  ctx.lineTo(x * tileSize, y * tileSize); // Complete the left side
+  ctx.lineTo(offsetX, offsetY + height * tileSize);
 
   ctx.stroke();
 };
-
-
-
-
 
 onMounted(() => {
   const canvas = dungeonCanvas.value;
@@ -152,6 +166,6 @@ watch(() => props.rooms, () => {
 .dungeon-map {
   margin: auto;
   display: block;
-  background-color: #fff;
+  background-color: #f3f3e8;
 }
 </style>
