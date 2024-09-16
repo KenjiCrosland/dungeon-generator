@@ -108,11 +108,15 @@ function generateTree(room, existingRooms = [], depth = 0) {
     // Create doorways for the child room
     const childDoorways = [];
 
+    // Assign the same type to the child doorway connecting back to the parent
+    const parentDoorwayType = doorway.type;
+
     // Add the connecting doorway back to the parent and mark it as fromParent
     childDoorways.push({
       side: oppositeSide,
       position: childDoorwayPosition,
       fromParent: true, // Mark to avoid processing it again
+      type: parentDoorwayType, // Ensure the type is consistent
     });
 
     // Determine the number of additional doorways to add
@@ -135,7 +139,19 @@ function generateTree(room, existingRooms = [], depth = 0) {
       const maxPosition = side === 'top' || side === 'bottom' ? width - 2 : height - 2;
       if (maxPosition > 0) {
         const position = Math.floor(Math.random() * maxPosition) + 1;
-        childDoorways.push({ side, position });
+
+        // Randomly assign a type ('door', 'locked-door', or 'corridor') based on weights
+        const randomValue = Math.random();
+        let type;
+        if (randomValue < 0.4) {
+          type = 'door'; // 40% chance
+        } else if (randomValue < 0.7) {
+          type = 'locked-door'; // Next 30% (0.4 to 0.7)
+        } else {
+          type = 'corridor'; // Remaining 30% (0.7 to 1)
+        }
+
+        childDoorways.push({ side, position, type });
       }
     });
 
@@ -192,9 +208,9 @@ const initialRoom = {
   width: 5,
   height: 4,
   doorways: [
-    { side: 'top', position: 1 },
-    { side: 'right', position: 2 },
-    { side: 'bottom', position: 3 },
+    { side: 'top', position: 1, type: 'door' },
+    { side: 'right', position: 2, type: 'corridor' },
+    { side: 'bottom', position: 3, type: 'locked-door' }, // Added 'locked-door' type
   ],
 };
 

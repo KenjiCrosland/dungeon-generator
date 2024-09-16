@@ -15,7 +15,7 @@ const props = defineProps({
   },
   tileSize: {
     type: Number,
-    default: 20,
+    default: 20, // Adjust tile size as needed
   },
 });
 
@@ -33,7 +33,7 @@ const resizeCanvas = () => {
   let minY = Math.min(...allY);
   let maxY = Math.max(...allY);
 
-  // Adjust minX, minY, maxX, maxY to add 2 units of padding
+  // Adjust minX, minY, maxX, maxY to add padding
   const paddingTiles = 2; // Number of tiles to pad around the dungeon
   minX -= paddingTiles;
   minY -= paddingTiles;
@@ -108,7 +108,6 @@ const drawRoomOutline = (ctx, room) => {
 
   // Top side with potential doorways (from left to right)
   ctx.moveTo(offsetX, offsetY);
-  let currentX = offsetX;
   const topDoorways = doorways?.filter(d => d.side === 'top') || [];
   topDoorways.sort((a, b) => a.position - b.position).forEach(doorway => {
     ctx.lineTo(offsetX + doorway.position * tileSize, offsetY);
@@ -118,7 +117,6 @@ const drawRoomOutline = (ctx, room) => {
 
   // Right side with potential doorways (from top to bottom)
   ctx.moveTo(offsetX + width * tileSize, offsetY);
-  let currentY = offsetY;
   const rightDoorways = doorways?.filter(d => d.side === 'right') || [];
   rightDoorways.sort((a, b) => a.position - b.position).forEach(doorway => {
     ctx.lineTo(offsetX + width * tileSize, offsetY + doorway.position * tileSize);
@@ -128,7 +126,6 @@ const drawRoomOutline = (ctx, room) => {
 
   // Bottom side with potential doorways (from right to left)
   ctx.moveTo(offsetX + width * tileSize, offsetY + height * tileSize);
-  currentX = offsetX + width * tileSize;
   const bottomDoorways = doorways?.filter(d => d.side === 'bottom') || [];
   bottomDoorways.sort((a, b) => b.position - a.position).forEach(doorway => {
     ctx.lineTo(offsetX + (doorway.position + 1) * tileSize, offsetY + height * tileSize);
@@ -138,7 +135,6 @@ const drawRoomOutline = (ctx, room) => {
 
   // Left side with potential doorways (from bottom to top)
   ctx.moveTo(offsetX, offsetY + height * tileSize);
-  currentY = offsetY + height * tileSize;
   const leftDoorways = doorways?.filter(d => d.side === 'left') || [];
   leftDoorways.sort((a, b) => b.position - a.position).forEach(doorway => {
     ctx.lineTo(offsetX, offsetY + (doorway.position + 1) * tileSize);
@@ -148,13 +144,180 @@ const drawRoomOutline = (ctx, room) => {
 
   ctx.stroke();
 
-  // Draw corridors for each doorway
+  // Draw corridors or doors for each doorway
   doorways?.forEach(doorway => {
     drawCorridor(ctx, room, doorway);
   });
 };
 
 const drawCorridor = (ctx, room, doorway) => {
+  const doorwayType = doorway.type || 'door'; // Default to 'door' if undefined
+
+  if (doorwayType === 'door') {
+    drawDoor(ctx, room, doorway, false); // Regular door
+    return;
+  } else if (doorwayType === 'locked-door') {
+    drawDoor(ctx, room, doorway, true); // Locked door
+    return;
+  } else if (doorwayType === 'corridor') {
+    // Draw corridor walls
+    drawCorridorWalls(ctx, room, doorway);
+  }
+};
+
+const drawDoor = (ctx, room, doorway, isLocked) => {
+  const { x, y, width, height } = room;
+  const tileSize = props.tileSize;
+  const offsetX = (x - ctx.canvas.minX) * tileSize;
+  const offsetY = (y - ctx.canvas.minY) * tileSize;
+
+  // Define dimensions
+  const doorSegmentLength = tileSize / 3 - 2; // Adjusted door length
+  const doorWidth = tileSize * 0.6 + 4;       // Adjusted door width
+  const maxDoorWidth = tileSize - 4;
+  const adjustedDoorWidth = Math.min(doorWidth, maxDoorWidth);
+  const totalGap = tileSize;
+  const corridorSegmentLength = (totalGap - doorSegmentLength) / 2;
+
+  ctx.strokeStyle = '#666';
+  ctx.lineWidth = 2;
+  ctx.fillStyle = isLocked ? '#333' : '#d3d3d3'; // Darker fill for locked doors
+  ctx.lineCap = 'round';
+
+  if (doorway.side === 'top') {
+    const startX = offsetX + doorway.position * tileSize;
+    const startY = offsetY;
+
+    // Left wall
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(startX, startY - corridorSegmentLength);
+    ctx.lineTo(startX + (tileSize - adjustedDoorWidth) / 2, startY - corridorSegmentLength);
+    ctx.stroke();
+
+    // Right wall
+    ctx.beginPath();
+    ctx.moveTo(startX + tileSize, startY);
+    ctx.lineTo(startX + tileSize, startY - corridorSegmentLength);
+    ctx.lineTo(startX + tileSize - (tileSize - adjustedDoorWidth) / 2, startY - corridorSegmentLength);
+    ctx.stroke();
+
+    // Door rectangle
+    const doorX = startX + (tileSize - adjustedDoorWidth) / 2;
+    const doorY = startY - corridorSegmentLength - doorSegmentLength;
+    ctx.fillRect(doorX, doorY, adjustedDoorWidth, doorSegmentLength);
+    ctx.strokeRect(doorX, doorY, adjustedDoorWidth, doorSegmentLength);
+
+    // Draw lock line if the door is locked
+    if (isLocked) {
+      ctx.beginPath();
+      ctx.moveTo(doorX + 2, doorY + doorSegmentLength / 2);
+      ctx.lineTo(doorX + adjustedDoorWidth - 2, doorY + doorSegmentLength / 2);
+      ctx.stroke();
+    }
+  }
+
+  if (doorway.side === 'bottom') {
+    const startX = offsetX + doorway.position * tileSize;
+    const startY = offsetY + height * tileSize;
+
+    // Left wall
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(startX, startY + corridorSegmentLength);
+    ctx.lineTo(startX + (tileSize - adjustedDoorWidth) / 2, startY + corridorSegmentLength);
+    ctx.stroke();
+
+    // Right wall
+    ctx.beginPath();
+    ctx.moveTo(startX + tileSize, startY);
+    ctx.lineTo(startX + tileSize, startY + corridorSegmentLength);
+    ctx.lineTo(startX + tileSize - (tileSize - adjustedDoorWidth) / 2, startY + corridorSegmentLength);
+    ctx.stroke();
+
+    // Door rectangle
+    const doorX = startX + (tileSize - adjustedDoorWidth) / 2;
+    const doorY = startY + corridorSegmentLength;
+    ctx.fillRect(doorX, doorY, adjustedDoorWidth, doorSegmentLength);
+    ctx.strokeRect(doorX, doorY, adjustedDoorWidth, doorSegmentLength);
+
+    // Draw lock line if the door is locked
+    if (isLocked) {
+      ctx.beginPath();
+      ctx.moveTo(doorX + 2, doorY + doorSegmentLength / 2);
+      ctx.lineTo(doorX + adjustedDoorWidth - 2, doorY + doorSegmentLength / 2);
+      ctx.stroke();
+    }
+  }
+
+  if (doorway.side === 'left') {
+    const startX = offsetX;
+    const startY = offsetY + doorway.position * tileSize;
+
+    // Top wall
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(startX - corridorSegmentLength, startY);
+    ctx.lineTo(startX - corridorSegmentLength, startY + (tileSize - adjustedDoorWidth) / 2);
+    ctx.stroke();
+
+    // Bottom wall
+    ctx.beginPath();
+    ctx.moveTo(startX, startY + tileSize);
+    ctx.lineTo(startX - corridorSegmentLength, startY + tileSize);
+    ctx.lineTo(startX - corridorSegmentLength, startY + tileSize - (tileSize - adjustedDoorWidth) / 2);
+    ctx.stroke();
+
+    // Door rectangle
+    const doorX = startX - corridorSegmentLength - doorSegmentLength;
+    const doorY = startY + (tileSize - adjustedDoorWidth) / 2;
+    ctx.fillRect(doorX, doorY, doorSegmentLength, adjustedDoorWidth);
+    ctx.strokeRect(doorX, doorY, doorSegmentLength, adjustedDoorWidth);
+
+    // Draw lock line if the door is locked
+    if (isLocked) {
+      ctx.beginPath();
+      ctx.moveTo(doorX + doorSegmentLength / 2, doorY + 2);
+      ctx.lineTo(doorX + doorSegmentLength / 2, doorY + adjustedDoorWidth - 2);
+      ctx.stroke();
+    }
+  }
+
+  if (doorway.side === 'right') {
+    const startX = offsetX + width * tileSize;
+    const startY = offsetY + doorway.position * tileSize;
+
+    // Top wall
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(startX + corridorSegmentLength, startY);
+    ctx.lineTo(startX + corridorSegmentLength, startY + (tileSize - adjustedDoorWidth) / 2);
+    ctx.stroke();
+
+    // Bottom wall
+    ctx.beginPath();
+    ctx.moveTo(startX, startY + tileSize);
+    ctx.lineTo(startX + corridorSegmentLength, startY + tileSize);
+    ctx.lineTo(startX + corridorSegmentLength, startY + tileSize - (tileSize - adjustedDoorWidth) / 2);
+    ctx.stroke();
+
+    // Door rectangle
+    const doorX = startX + corridorSegmentLength;
+    const doorY = startY + (tileSize - adjustedDoorWidth) / 2;
+    ctx.fillRect(doorX, doorY, doorSegmentLength, adjustedDoorWidth);
+    ctx.strokeRect(doorX, doorY, doorSegmentLength, adjustedDoorWidth);
+
+    // Draw lock line if the door is locked
+    if (isLocked) {
+      ctx.beginPath();
+      ctx.moveTo(doorX + doorSegmentLength / 2, doorY + 2);
+      ctx.lineTo(doorX + doorSegmentLength / 2, doorY + adjustedDoorWidth - 2);
+      ctx.stroke();
+    }
+  }
+};
+
+const drawCorridorWalls = (ctx, room, doorway) => {
   const { x, y, width, height } = room;
   const tileSize = props.tileSize;
   const offsetX = (x - ctx.canvas.minX) * tileSize;
@@ -242,15 +405,18 @@ onMounted(() => {
   drawRooms(ctx);
 });
 
-// Redraw the canvas whenever the rooms prop changes
-watch(() => props.rooms, () => {
-  const canvas = dungeonCanvas.value;
-  const ctx = canvas.getContext('2d');
+watch(
+  () => props.rooms,
+  () => {
+    const canvas = dungeonCanvas.value;
+    const ctx = canvas.getContext('2d');
 
-  resizeCanvas();
-  ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas before redrawing
-  drawRooms(ctx);
-});
+    resizeCanvas();
+    ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas before redrawing
+    drawRooms(ctx);
+  },
+  { deep: true }
+);
 </script>
 
 <style scoped>
