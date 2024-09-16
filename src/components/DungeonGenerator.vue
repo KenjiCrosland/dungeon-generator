@@ -36,15 +36,32 @@ function generateTree(room, existingRooms = [], depth = 0) {
     room.id = nextRoomId++;
   }
 
-  existingRooms.push(room);
+  // Check if the room is already in existingRooms
+  if (!existingRooms.some(r => r.id === room.id)) {
+    existingRooms.push(room);
+  } else {
+    return; // Room already processed
+  }
 
   if (depth > 3) {
-    return room;
+    // Remove all doorways except the one leading back to the parent
+    room.doorways = room.doorways.filter(d => d.fromParent);
+    return;
   }
 
   const doorways = room.doorways || [];
 
-  doorways.forEach(doorway => {
+  // Keep track of doorways that successfully led to child rooms
+  const successfulDoorways = [];
+
+  // Process doorways that are not marked as fromParent
+  for (let i = 0; i < doorways.length; i++) {
+    const doorway = doorways[i];
+
+    if (doorway.fromParent) {
+      continue; // Skip processing the doorway back to the parent
+    }
+
     const parentDoorwaySide = doorway.side;
     const oppositeSide = getOppositeSide(parentDoorwaySide);
 
@@ -87,22 +104,31 @@ function generateTree(room, existingRooms = [], depth = 0) {
     // Create doorways for the child room
     const childDoorways = [];
 
-    // Add the connecting doorway back to the parent
-    childDoorways.push({ side: oppositeSide, position: childDoorwayPosition });
+    // Add the connecting doorway back to the parent and mark it as fromParent
+    childDoorways.push({
+      side: oppositeSide,
+      position: childDoorwayPosition,
+      fromParent: true, // Mark to avoid processing it again
+    });
 
     // Determine the number of additional doorways to add
     const minAdditionalDoorways = 0;
     const maxAdditionalDoorways = 2;
-    const numAdditionalDoorways = Math.floor(Math.random() * (maxAdditionalDoorways - minAdditionalDoorways + 1)) + minAdditionalDoorways;
+    const numAdditionalDoorways =
+      Math.floor(Math.random() * (maxAdditionalDoorways - minAdditionalDoorways + 1)) + minAdditionalDoorways;
 
     // Get available sides excluding the one connected to the parent
-    const availableSides = ['top', 'right', 'bottom', 'left'].filter(side => side !== oppositeSide);
+    const availableSides = ['top', 'right', 'bottom', 'left'].filter(
+      side => side !== oppositeSide
+    );
 
     // Randomly select sides for additional doorways
-    const sidesForDoorways = availableSides.sort(() => Math.random() - 0.5).slice(0, numAdditionalDoorways);
+    const sidesForDoorways = availableSides
+      .sort(() => Math.random() - 0.5)
+      .slice(0, numAdditionalDoorways);
 
     sidesForDoorways.forEach(side => {
-      const maxPosition = (side === 'top' || side === 'bottom') ? width - 2 : height - 2;
+      const maxPosition = side === 'top' || side === 'bottom' ? width - 2 : height - 2;
       if (maxPosition > 0) {
         const position = Math.floor(Math.random() * maxPosition) + 1;
         childDoorways.push({ side, position });
@@ -122,20 +148,35 @@ function generateTree(room, existingRooms = [], depth = 0) {
     const overlaps = existingRooms.some(existingRoom => roomsOverlap(existingRoom, newRoom));
 
     if (!overlaps) {
-      // Assign an ID and add the new room to existingRooms
+      // Now assign an ID to the new room
       newRoom.id = nextRoomId++;
-      existingRooms.push(newRoom);
 
       // Proceed to generate child rooms
       generateTree(newRoom, existingRooms, depth + 1);
+
+      // If the child room has at least one doorway (besides the one back to parent), keep the doorway
+      if (newRoom.doorways.some(d => !d.fromParent)) {
+        successfulDoorways.push(doorway);
+      } else {
+        // Child room is a dead end; you can decide whether to keep the doorway or not
+        // For now, we'll keep the doorway
+        successfulDoorways.push(doorway);
+      }
     } else {
-      // Overlaps, skip this room
+      // Overlaps, remove the doorway from the parent room
+      // We don't add this doorway to successfulDoorways
     }
-  });
+  }
 
-  return room;
+  // Update the room's doorways to only include successful doorways and fromParent doorways
+  room.doorways = room.doorways.filter(d => d.fromParent || successfulDoorways.includes(d));
+
+  // If the room has no doorways left (except maybe the one from parent) and is not the initial room, it's a dead end
+  if (room.doorways.length === 0 && depth !== 0) {
+    // Optionally, you can remove the room from existingRooms
+    // For now, we'll leave it in as a dead-end room
+  }
 }
-
 
 // Reset nextRoomId before generating the dungeon
 nextRoomId = 1;
@@ -158,4 +199,5 @@ generateTree(initialRoom, existingRooms);
 
 // Use existingRooms as the flattened rooms
 const flattenedRooms = ref(existingRooms);
+console.log(flattenedRooms.value);
 </script>

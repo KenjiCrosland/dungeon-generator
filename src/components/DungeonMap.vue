@@ -28,14 +28,20 @@ const resizeCanvas = () => {
   // Calculate minimum and maximum coordinates
   const allX = props.rooms.flatMap(room => [room.x, room.x + room.width]);
   const allY = props.rooms.flatMap(room => [room.y, room.y + room.height]);
-  const minX = Math.min(...allX);
-  const maxX = Math.max(...allX);
-  const minY = Math.min(...allY);
-  const maxY = Math.max(...allY);
+  let minX = Math.min(...allX);
+  let maxX = Math.max(...allX);
+  let minY = Math.min(...allY);
+  let maxY = Math.max(...allY);
 
-  // Calculate width and height based on min and max coordinates
-  canvas.width = (maxX - minX) * tileSize + 20;  // Add some padding
-  canvas.height = (maxY - minY) * tileSize + 20; // Add some padding
+  // Adjust minX, minY, maxX, maxY to add 2 units of padding
+  minX -= 2;
+  minY -= 2;
+  maxX += 2;
+  maxY += 2;
+
+  // Calculate width and height based on adjusted min and max coordinates
+  canvas.width = (maxX - minX) * tileSize;
+  canvas.height = (maxY - minY) * tileSize;
 
   // Store minX and minY to adjust the drawing positions
   canvas.minX = minX;
