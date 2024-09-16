@@ -6,13 +6,14 @@
 import { ref } from 'vue';
 import DungeonMap from './DungeonMap.vue';
 
-// Function to check for overlapping rooms
+// Function to check for overlapping rooms with a gap
 function roomsOverlap(room1, room2) {
+  const buffer = 1; // Gap of 1 tile between rooms
   return (
-    room1.x < room2.x + room2.width &&
-    room1.x + room1.width > room2.x &&
-    room1.y < room2.y + room2.height &&
-    room1.y + room1.height > room2.y
+    room1.x - buffer < room2.x + room2.width &&
+    room1.x + room1.width + buffer > room2.x &&
+    room1.y - buffer < room2.y + room2.height &&
+    room1.y + room1.height + buffer > room2.y
   );
 }
 
@@ -54,6 +55,9 @@ function generateTree(room, existingRooms = [], depth = 0) {
   // Keep track of doorways that successfully led to child rooms
   const successfulDoorways = [];
 
+  // Gap between rooms
+  const gap = 1; // 1 tile gap
+
   // Process doorways that are not marked as fromParent
   for (let i = 0; i < doorways.length; i++) {
     const doorway = doorways[i];
@@ -83,21 +87,21 @@ function generateTree(room, existingRooms = [], depth = 0) {
       }
     }
 
-    // Calculate the child room's position
+    // Calculate the child room's position with gap
     let x = room.x;
     let y = room.y;
 
     if (parentDoorwaySide === 'top') {
-      y = room.y - height; // Place child room above
+      y = room.y - height - gap; // Place child room above with gap
       x = room.x + doorway.position - childDoorwayPosition;
     } else if (parentDoorwaySide === 'bottom') {
-      y = room.y + room.height; // Place child room below
+      y = room.y + room.height + gap; // Place child room below with gap
       x = room.x + doorway.position - childDoorwayPosition;
     } else if (parentDoorwaySide === 'left') {
-      x = room.x - width; // Place child room to the left
+      x = room.x - width - gap; // Place child room to the left with gap
       y = room.y + doorway.position - childDoorwayPosition;
     } else if (parentDoorwaySide === 'right') {
-      x = room.x + room.width; // Place child room to the right
+      x = room.x + room.width + gap; // Place child room to the right with gap
       y = room.y + doorway.position - childDoorwayPosition;
     }
 
@@ -158,8 +162,7 @@ function generateTree(room, existingRooms = [], depth = 0) {
       if (newRoom.doorways.some(d => !d.fromParent)) {
         successfulDoorways.push(doorway);
       } else {
-        // Child room is a dead end; you can decide whether to keep the doorway or not
-        // For now, we'll keep the doorway
+        // Child room is a dead end; decide whether to keep the doorway
         successfulDoorways.push(doorway);
       }
     } else {
@@ -191,7 +194,7 @@ const initialRoom = {
   doorways: [
     { side: 'top', position: 1 },
     { side: 'right', position: 2 },
-    { side: 'bottom', position: 3 }
+    { side: 'bottom', position: 3 },
   ],
 };
 
@@ -199,5 +202,4 @@ generateTree(initialRoom, existingRooms);
 
 // Use existingRooms as the flattened rooms
 const flattenedRooms = ref(existingRooms);
-console.log(flattenedRooms.value);
 </script>

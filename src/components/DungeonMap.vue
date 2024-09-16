@@ -34,10 +34,11 @@ const resizeCanvas = () => {
   let maxY = Math.max(...allY);
 
   // Adjust minX, minY, maxX, maxY to add 2 units of padding
-  minX -= 2;
-  minY -= 2;
-  maxX += 2;
-  maxY += 2;
+  const paddingTiles = 2; // Number of tiles to pad around the dungeon
+  minX -= paddingTiles;
+  minY -= paddingTiles;
+  maxX += paddingTiles;
+  maxY += paddingTiles;
 
   // Calculate width and height based on adjusted min and max coordinates
   canvas.width = (maxX - minX) * tileSize;
@@ -105,48 +106,132 @@ const drawRoomOutline = (ctx, room) => {
 
   ctx.beginPath();
 
-  // Top side with potential doorways (counting from the left)
+  // Top side with potential doorways (from left to right)
   ctx.moveTo(offsetX, offsetY);
   let currentX = offsetX;
-  doorways?.filter(d => d.side === 'top').forEach(doorway => {
+  const topDoorways = doorways?.filter(d => d.side === 'top') || [];
+  topDoorways.sort((a, b) => a.position - b.position).forEach(doorway => {
     ctx.lineTo(offsetX + doorway.position * tileSize, offsetY);
-    currentX = offsetX + (doorway.position + 1) * tileSize;
-    ctx.moveTo(currentX, offsetY);
+    ctx.moveTo(offsetX + (doorway.position + 1) * tileSize, offsetY);
   });
   ctx.lineTo(offsetX + width * tileSize, offsetY);
 
-  // Right side with potential doorways (counting from the top)
+  // Right side with potential doorways (from top to bottom)
   ctx.moveTo(offsetX + width * tileSize, offsetY);
   let currentY = offsetY;
-  doorways?.filter(d => d.side === 'right').forEach(doorway => {
+  const rightDoorways = doorways?.filter(d => d.side === 'right') || [];
+  rightDoorways.sort((a, b) => a.position - b.position).forEach(doorway => {
     ctx.lineTo(offsetX + width * tileSize, offsetY + doorway.position * tileSize);
-    currentY = offsetY + (doorway.position + 1) * tileSize;
-    ctx.moveTo(offsetX + width * tileSize, currentY);
+    ctx.moveTo(offsetX + width * tileSize, offsetY + (doorway.position + 1) * tileSize);
   });
   ctx.lineTo(offsetX + width * tileSize, offsetY + height * tileSize);
 
-  // Bottom side with potential doorways (counting from the left)
-  ctx.moveTo(offsetX, offsetY + height * tileSize);
-  currentX = offsetX;
-  doorways?.filter(d => d.side === 'bottom').forEach(doorway => {
-    const doorwayStart = offsetX + doorway.position * tileSize;
-    ctx.lineTo(doorwayStart, offsetY + height * tileSize);
-    currentX = doorwayStart + tileSize;
-    ctx.moveTo(currentX, offsetY + height * tileSize);
-  });
-  ctx.lineTo(offsetX + width * tileSize, offsetY + height * tileSize);
-
-  // Left side with potential doorways (counting from the top)
-  ctx.moveTo(offsetX, offsetY);
-  currentY = offsetY;
-  doorways?.filter(d => d.side === 'left').forEach(doorway => {
-    ctx.lineTo(offsetX, offsetY + doorway.position * tileSize);
-    currentY = offsetY + (doorway.position + 1) * tileSize;
-    ctx.moveTo(offsetX, currentY);
+  // Bottom side with potential doorways (from right to left)
+  ctx.moveTo(offsetX + width * tileSize, offsetY + height * tileSize);
+  currentX = offsetX + width * tileSize;
+  const bottomDoorways = doorways?.filter(d => d.side === 'bottom') || [];
+  bottomDoorways.sort((a, b) => b.position - a.position).forEach(doorway => {
+    ctx.lineTo(offsetX + (doorway.position + 1) * tileSize, offsetY + height * tileSize);
+    ctx.moveTo(offsetX + doorway.position * tileSize, offsetY + height * tileSize);
   });
   ctx.lineTo(offsetX, offsetY + height * tileSize);
 
+  // Left side with potential doorways (from bottom to top)
+  ctx.moveTo(offsetX, offsetY + height * tileSize);
+  currentY = offsetY + height * tileSize;
+  const leftDoorways = doorways?.filter(d => d.side === 'left') || [];
+  leftDoorways.sort((a, b) => b.position - a.position).forEach(doorway => {
+    ctx.lineTo(offsetX, offsetY + (doorway.position + 1) * tileSize);
+    ctx.moveTo(offsetX, offsetY + doorway.position * tileSize);
+  });
+  ctx.lineTo(offsetX, offsetY);
+
   ctx.stroke();
+
+  // Draw corridors for each doorway
+  doorways?.forEach(doorway => {
+    drawCorridor(ctx, room, doorway);
+  });
+};
+
+const drawCorridor = (ctx, room, doorway) => {
+  const { x, y, width, height } = room;
+  const tileSize = props.tileSize;
+  const offsetX = (x - ctx.canvas.minX) * tileSize;
+  const offsetY = (y - ctx.canvas.minY) * tileSize;
+
+  const corridorWidth = tileSize; // Width of the corridor (1 tile)
+  const corridorLength = tileSize; // Length of the corridor (1 tile gap)
+
+  ctx.strokeStyle = 'rgba(51, 51, 51, 0.8)'; // Same color as room outlines
+  ctx.lineWidth = 2.5; // Same line width as room outlines
+  ctx.lineCap = 'round'; // Ensure lines have rounded ends
+
+  if (doorway.side === 'top') {
+    const corridorX = offsetX + doorway.position * tileSize;
+    const corridorYStart = offsetY;
+    const corridorYEnd = offsetY - corridorLength;
+
+    // Left wall of the corridor
+    ctx.beginPath();
+    ctx.moveTo(corridorX, corridorYStart);
+    ctx.lineTo(corridorX, corridorYEnd);
+    ctx.stroke();
+
+    // Right wall of the corridor
+    ctx.beginPath();
+    ctx.moveTo(corridorX + tileSize, corridorYStart);
+    ctx.lineTo(corridorX + tileSize, corridorYEnd);
+    ctx.stroke();
+  } else if (doorway.side === 'bottom') {
+    const corridorX = offsetX + doorway.position * tileSize;
+    const corridorYStart = offsetY + height * tileSize;
+    const corridorYEnd = corridorYStart + corridorLength;
+
+    // Left wall of the corridor
+    ctx.beginPath();
+    ctx.moveTo(corridorX, corridorYStart);
+    ctx.lineTo(corridorX, corridorYEnd);
+    ctx.stroke();
+
+    // Right wall of the corridor
+    ctx.beginPath();
+    ctx.moveTo(corridorX + tileSize, corridorYStart);
+    ctx.lineTo(corridorX + tileSize, corridorYEnd);
+    ctx.stroke();
+  } else if (doorway.side === 'left') {
+    const corridorXStart = offsetX;
+    const corridorXEnd = offsetX - corridorLength;
+    const corridorY = offsetY + doorway.position * tileSize;
+
+    // Top wall of the corridor
+    ctx.beginPath();
+    ctx.moveTo(corridorXStart, corridorY);
+    ctx.lineTo(corridorXEnd, corridorY);
+    ctx.stroke();
+
+    // Bottom wall of the corridor
+    ctx.beginPath();
+    ctx.moveTo(corridorXStart, corridorY + tileSize);
+    ctx.lineTo(corridorXEnd, corridorY + tileSize);
+    ctx.stroke();
+  } else if (doorway.side === 'right') {
+    const corridorXStart = offsetX + width * tileSize;
+    const corridorXEnd = corridorXStart + corridorLength;
+    const corridorY = offsetY + doorway.position * tileSize;
+
+    // Top wall of the corridor
+    ctx.beginPath();
+    ctx.moveTo(corridorXStart, corridorY);
+    ctx.lineTo(corridorXEnd, corridorY);
+    ctx.stroke();
+
+    // Bottom wall of the corridor
+    ctx.beginPath();
+    ctx.moveTo(corridorXStart, corridorY + tileSize);
+    ctx.lineTo(corridorXEnd, corridorY + tileSize);
+    ctx.stroke();
+  }
 };
 
 onMounted(() => {
