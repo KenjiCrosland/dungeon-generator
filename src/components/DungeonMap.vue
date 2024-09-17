@@ -155,15 +155,16 @@ const drawCorridor = (ctx, room, doorway) => {
 
   if (doorwayType === 'door') {
     drawDoor(ctx, room, doorway, false); // Regular door
-    return;
   } else if (doorwayType === 'locked-door') {
     drawDoor(ctx, room, doorway, true); // Locked door
-    return;
   } else if (doorwayType === 'corridor') {
-    // Draw corridor walls
-    drawCorridorWalls(ctx, room, doorway);
+    drawCorridorWalls(ctx, room, doorway); // Regular corridor
+  } else if (doorwayType === 'stairs' && room.id > doorway.connectedRoomId) { // Only draw for one room
+    drawStairs(ctx, room, doorway); // Stairs
   }
 };
+
+
 
 const drawDoor = (ctx, room, doorway, isLocked) => {
   const { x, y, width, height } = room;
@@ -179,9 +180,9 @@ const drawDoor = (ctx, room, doorway, isLocked) => {
   const totalGap = tileSize;
   const corridorSegmentLength = (totalGap - doorSegmentLength) / 2;
 
-  ctx.strokeStyle = '#666';
+  ctx.strokeStyle = 'rgba(51, 51, 51, 0.8)';
   ctx.lineWidth = 2;
-  ctx.fillStyle = isLocked ? '#333' : '#d3d3d3'; // Darker fill for locked doors
+  ctx.fillStyle = isLocked ? '#eee' : '#fff'; // Darker fill for locked doors
   ctx.lineCap = 'round';
 
   if (doorway.side === 'top') {
@@ -316,6 +317,138 @@ const drawDoor = (ctx, room, doorway, isLocked) => {
     }
   }
 };
+
+const drawStairs = (ctx, room, doorway) => {
+  const { x, y, width, height } = room;
+  const tileSize = props.tileSize;
+  const offsetX = (x - ctx.canvas.minX) * tileSize;
+  const offsetY = (y - ctx.canvas.minY) * tileSize;
+
+  const stepHeight = tileSize / 5; // Spacing between steps
+  const numSteps = 3; // Number of steps
+  const minStepLength = tileSize / 3; // Ensure the smallest step isn't a dot
+  const firstStepLength = tileSize * 0.75; // Shorten the first step length
+
+  ctx.strokeStyle = '#666'; // Line color for the stairs
+  ctx.lineWidth = 2;
+
+  if (doorway.side === 'top') {
+    const startX = offsetX + doorway.position * tileSize;
+    const startY = offsetY;
+
+    // Shift the starting point of the first step by one "space" forward
+    const shiftForward = stepHeight;
+
+    // Draw the shortened wide line at the top (first step)
+    ctx.beginPath();
+    ctx.moveTo(startX + (tileSize - firstStepLength) / 2, startY - shiftForward);
+    ctx.lineTo(startX + (tileSize + firstStepLength) / 2, startY - shiftForward);
+    ctx.stroke();
+
+    // Draw progressively shorter lines (steps) moving downward
+    for (let i = 1; i <= numSteps; i++) {
+      const stepLength = Math.max(minStepLength, firstStepLength - i * (firstStepLength / numSteps));
+      const stepY = startY - (i + 1) * stepHeight;
+      ctx.beginPath();
+      ctx.moveTo(startX + (tileSize - stepLength) / 2, stepY);
+      ctx.lineTo(startX + (tileSize + stepLength) / 2, stepY);
+      ctx.stroke();
+    }
+
+    // Ensure the last line aligns with the edge of the connecting room
+    ctx.beginPath();
+    ctx.moveTo(startX + (tileSize - minStepLength) / 2, startY - (numSteps + 1) * stepHeight);
+    ctx.lineTo(startX + (tileSize + minStepLength) / 2, startY - (numSteps + 1) * stepHeight);
+    ctx.stroke();
+  } else if (doorway.side === 'bottom') {
+    const startX = offsetX + doorway.position * tileSize;
+    const startY = offsetY + height * tileSize;
+
+    // Shift the starting point of the first step by one "space" forward
+    const shiftForward = stepHeight;
+
+    // Draw the shortened wide line at the bottom (first step)
+    ctx.beginPath();
+    ctx.moveTo(startX + (tileSize - firstStepLength) / 2, startY + shiftForward);
+    ctx.lineTo(startX + (tileSize + firstStepLength) / 2, startY + shiftForward);
+    ctx.stroke();
+
+    // Draw progressively shorter lines (steps) moving upward
+    for (let i = 1; i <= numSteps; i++) {
+      const stepLength = Math.max(minStepLength, firstStepLength - i * (firstStepLength / numSteps));
+      const stepY = startY + (i + 1) * stepHeight;
+      ctx.beginPath();
+      ctx.moveTo(startX + (tileSize - stepLength) / 2, stepY);
+      ctx.lineTo(startX + (tileSize + stepLength) / 2, stepY);
+      ctx.stroke();
+    }
+
+    // Ensure the last line aligns with the edge of the connecting room
+    ctx.beginPath();
+    ctx.moveTo(startX + (tileSize - minStepLength) / 2, startY + (numSteps + 1) * stepHeight);
+    ctx.lineTo(startX + (tileSize + minStepLength) / 2, startY + (numSteps + 1) * stepHeight);
+    ctx.stroke();
+  } else if (doorway.side === 'left') {
+    const startX = offsetX;
+    const startY = offsetY + doorway.position * tileSize;
+
+    // Shift the starting point of the first step by one "space" forward
+    const shiftForward = stepHeight;
+
+    // Draw the shortened wide line on the left (first step)
+    ctx.beginPath();
+    ctx.moveTo(startX - shiftForward, startY + (tileSize - firstStepLength) / 2);
+    ctx.lineTo(startX - shiftForward, startY + (tileSize + firstStepLength) / 2);
+    ctx.stroke();
+
+    // Draw progressively shorter lines (steps) moving right
+    for (let i = 1; i <= numSteps; i++) {
+      const stepLength = Math.max(minStepLength, firstStepLength - i * (firstStepLength / numSteps));
+      const stepX = startX - (i + 1) * stepHeight;
+      ctx.beginPath();
+      ctx.moveTo(stepX, startY + (tileSize - stepLength) / 2);
+      ctx.lineTo(stepX, startY + (tileSize + stepLength) / 2);
+      ctx.stroke();
+    }
+
+    // Ensure the last line aligns with the edge of the connecting room
+    ctx.beginPath();
+    ctx.moveTo(startX - (numSteps + 1) * stepHeight, startY + (tileSize - minStepLength) / 2);
+    ctx.lineTo(startX - (numSteps + 1) * stepHeight, startY + (tileSize + minStepLength) / 2);
+    ctx.stroke();
+  } else if (doorway.side === 'right') {
+    const startX = offsetX + width * tileSize;
+    const startY = offsetY + doorway.position * tileSize;
+
+    // Shift the starting point of the first step by one "space" forward
+    const shiftForward = stepHeight;
+
+    // Draw the shortened wide line on the right (first step)
+    ctx.beginPath();
+    ctx.moveTo(startX + shiftForward, startY + (tileSize - firstStepLength) / 2);
+    ctx.lineTo(startX + shiftForward, startY + (tileSize + firstStepLength) / 2);
+    ctx.stroke();
+
+    // Draw progressively shorter lines (steps) moving left
+    for (let i = 1; i <= numSteps; i++) {
+      const stepLength = Math.max(minStepLength, firstStepLength - i * (firstStepLength / numSteps));
+      const stepX = startX + (i + 1) * stepHeight;
+      ctx.beginPath();
+      ctx.moveTo(stepX, startY + (tileSize - stepLength) / 2);
+      ctx.lineTo(stepX, startY + (tileSize + stepLength) / 2);
+      ctx.stroke();
+    }
+
+    // Ensure the last line aligns with the edge of the connecting room
+    ctx.beginPath();
+    ctx.moveTo(startX + (numSteps + 1) * stepHeight, startY + (tileSize - minStepLength) / 2);
+    ctx.lineTo(startX + (numSteps + 1) * stepHeight, startY + (tileSize + minStepLength) / 2);
+    ctx.stroke();
+  }
+};
+
+
+
 
 const drawCorridorWalls = (ctx, room, doorway) => {
   const { x, y, width, height } = room;

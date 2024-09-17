@@ -140,18 +140,28 @@ function generateTree(room, existingRooms = [], depth = 0) {
       if (maxPosition > 0) {
         const position = Math.floor(Math.random() * maxPosition) + 1;
 
-        // Randomly assign a type ('door', 'locked-door', or 'corridor') based on weights
+        // Randomly assign a type ('door', 'locked-door', 'corridor', or 'stairs') based on weights
         const randomValue = Math.random();
         let type;
+
         if (randomValue < 0.4) {
-          type = 'door'; // 40% chance
-        } else if (randomValue < 0.7) {
-          type = 'locked-door'; // Next 30% (0.4 to 0.7)
+          type = 'door'; // 40% chance for a regular door
+        } else if (randomValue < 0.6) {
+          type = 'locked-door'; // Next 20% (0.4 to 0.6) for a locked door
+        } else if (randomValue < 0.85) {
+          type = 'corridor'; // Next 25% (0.6 to 0.85) for a corridor
         } else {
-          type = 'corridor'; // Remaining 30% (0.7 to 1)
+          type = 'stairs'; // Remaining 15% (0.85 to 1) for stairs
         }
 
-        childDoorways.push({ side, position, type });
+        const doorwayData = { side, position, type };
+
+        if (type === 'stairs') {
+          // Assign connectedRoomId for stairs to reference the parent room
+          doorwayData.connectedRoomId = room.id;
+        }
+
+        childDoorways.push(doorwayData);
       }
     });
 
