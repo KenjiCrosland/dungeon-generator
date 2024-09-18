@@ -355,7 +355,7 @@ existingRooms.forEach(room => {
   room.groupId = originalGroupId;
   room.displayGroupId = groupIdMap.get(originalGroupId);
 });
-
+console.log(existingRooms);
 // Use existingRooms as the flattened rooms
 const flattenedRooms = ref(existingRooms);
 </script>

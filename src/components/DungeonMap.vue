@@ -81,18 +81,29 @@ const computeGroupMap = () => {
     const groupId = room.displayGroupId || room.id; // Use room.id if displayGroupId is not set
     if (!groupMap.has(groupId)) {
       groupMap.set(groupId, {
-        minX: room.x,
-        minY: room.y,
-        maxX: room.x + room.width,
-        maxY: room.y + room.height,
+        tiles: new Set(),
+        minX: Infinity,
+        maxX: -Infinity,
+        minY: Infinity,
+        maxY: -Infinity,
         displayGroupId: groupId,
       });
-    } else {
-      const group = groupMap.get(groupId);
-      group.minX = Math.min(group.minX, room.x);
-      group.minY = Math.min(group.minY, room.y);
-      group.maxX = Math.max(group.maxX, room.x + room.width);
-      group.maxY = Math.max(group.maxY, room.y + room.height);
+    }
+    const group = groupMap.get(groupId);
+    // Collect all tiles occupied by this room
+    for (let i = 0; i < room.width; i++) {
+      for (let j = 0; j < room.height; j++) {
+        const tileX = room.x + i;
+        const tileY = room.y + j;
+        const tileKey = `${tileX},${tileY}`;
+        group.tiles.add(tileKey);
+
+        // Update group's bounding box
+        group.minX = Math.min(group.minX, tileX);
+        group.maxX = Math.max(group.maxX, tileX + 1);
+        group.minY = Math.min(group.minY, tileY);
+        group.maxY = Math.max(group.maxY, tileY + 1);
+      }
     }
   });
 };
@@ -115,10 +126,29 @@ const drawGroupNumbers = (ctx) => {
   const tileSize = props.tileSize;
 
   groupMap.forEach((group) => {
-    const centerX = ((group.minX - ctx.canvas.minX) + (group.maxX - group.minX) / 2) * tileSize;
-    const centerY = ((group.minY - ctx.canvas.minY) + (group.maxY - group.minY) / 2) * tileSize;
+    const tileCoordinates = Array.from(group.tiles).map(tileKey => {
+      const [x, y] = tileKey.split(',').map(Number);
+      return { x, y };
+    });
 
-    ctx.font = '16px Arial';
+    if (tileCoordinates.length === 0) return;
+
+    // Calculate centroid using exact positions
+    const sumX = tileCoordinates.reduce((acc, tile) => acc + tile.x + 0.5, 0);
+    const sumY = tileCoordinates.reduce((acc, tile) => acc + tile.y + 0.5, 0);
+    let centroidX = sumX / tileCoordinates.length;
+    let centroidY = sumY / tileCoordinates.length;
+
+    // Ensure centroid is within group's bounding box
+    centroidX = Math.max(group.minX, Math.min(centroidX, group.maxX));
+    centroidY = Math.max(group.minY, Math.min(centroidY, group.maxY));
+
+    // Convert to canvas coordinates
+    const centerX = (centroidX - ctx.canvas.minX) * tileSize;
+    const centerY = (centroidY - ctx.canvas.minY) * tileSize;
+
+    // Draw the number
+    ctx.font = '14px Arial';
     ctx.fillStyle = '#333'; // Dark gray color for text
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
