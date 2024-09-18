@@ -9,11 +9,33 @@ import DungeonMap from './DungeonMap.vue';
 // Function to check for overlapping rooms with a gap
 function roomsOverlap(room1, room2) {
   const buffer = 1; // Gap of 1 tile between rooms
+
+  // If rooms are connected via a 'merged' doorway, allow them to touch
+  let isMerged = false;
+  if (room1.doorways && room2.doorways) {
+    room1.doorways.forEach(d1 => {
+      if (d1.type === 'merged') {
+        room2.doorways.forEach(d2 => {
+          if (
+            d2.type === 'merged' &&
+            getOppositeSide(d1.side) === d2.side &&
+            d1.position === d2.position &&
+            room1.id !== room2.id
+          ) {
+            isMerged = true;
+          }
+        });
+      }
+    });
+  }
+
+  const actualBuffer = isMerged ? 0 : buffer;
+
   return (
-    room1.x - buffer < room2.x + room2.width &&
-    room1.x + room1.width + buffer > room2.x &&
-    room1.y - buffer < room2.y + room2.height &&
-    room1.y + room1.height + buffer > room2.y
+    room1.x - actualBuffer < room2.x + room2.width &&
+    room1.x + room1.width + actualBuffer > room2.x &&
+    room1.y - actualBuffer < room2.y + room2.height &&
+    room1.y + room1.height + actualBuffer > room2.y
   );
 }
 
@@ -55,9 +77,6 @@ function generateTree(room, existingRooms = [], depth = 0) {
   // Keep track of doorways that successfully led to child rooms
   const successfulDoorways = [];
 
-  // Gap between rooms
-  const gap = 1; // 1 tile gap
-
   // Process doorways that are not marked as fromParent
   for (let i = 0; i < doorways.length; i++) {
     const doorway = doorways[i];
@@ -87,6 +106,14 @@ function generateTree(room, existingRooms = [], depth = 0) {
       }
     }
 
+    // Gap between rooms
+    let gap = 1; // Default gap is 1 tile
+
+    // If the connection is 'merged', set gap to 0
+    if (doorway.type === 'merged') {
+      gap = 0;
+    }
+
     // Calculate the child room's position with gap
     let x = room.x;
     let y = room.y;
@@ -111,13 +138,20 @@ function generateTree(room, existingRooms = [], depth = 0) {
     // Assign the same type to the child doorway connecting back to the parent
     const parentDoorwayType = doorway.type;
 
-    // Add the connecting doorway back to the parent and mark it as fromParent
+    // Add the connecting doorway back to the parent and mark it appropriately
     childDoorways.push({
       side: oppositeSide,
       position: childDoorwayPosition,
       fromParent: true, // Mark to avoid processing it again
       type: parentDoorwayType, // Ensure the type is consistent
     });
+
+    // For merged connections, both rooms need to know about the merged side
+    if (parentDoorwayType === 'merged') {
+      // Mark the sides as merged in both rooms
+      doorway.merged = true; // In the parent room's doorway
+      childDoorways[childDoorways.length - 1].merged = true; // In the child room's doorway
+    }
 
     // Determine the number of additional doorways to add
     const minAdditionalDoorways = 0;
@@ -140,18 +174,20 @@ function generateTree(room, existingRooms = [], depth = 0) {
       if (maxPosition > 0) {
         const position = Math.floor(Math.random() * maxPosition) + 1;
 
-        // Randomly assign a type ('door', 'locked-door', 'corridor', or 'stairs') based on weights
+        // Randomly assign a type ('door', 'locked-door', 'corridor', 'stairs', or 'merged') based on weights
         const randomValue = Math.random();
         let type;
 
-        if (randomValue < 0.4) {
-          type = 'door'; // 40% chance for a regular door
-        } else if (randomValue < 0.6) {
-          type = 'locked-door'; // Next 20% (0.4 to 0.6) for a locked door
-        } else if (randomValue < 0.85) {
-          type = 'corridor'; // Next 25% (0.6 to 0.85) for a corridor
+        if (randomValue < 0.35) {
+          type = 'door'; // 35% chance for a regular door
+        } else if (randomValue < 0.5) {
+          type = 'locked-door'; // Next 15% (0.35 to 0.5) for a locked door
+        } else if (randomValue < 0.75) {
+          type = 'corridor'; // Next 25% (0.5 to 0.75) for a corridor
+        } else if (randomValue < 0.9) {
+          type = 'stairs'; // Next 15% (0.75 to 0.9) for stairs
         } else {
-          type = 'stairs'; // Remaining 15% (0.85 to 1) for stairs
+          type = 'merged'; // Remaining 10% (0.9 to 1) for merged rooms
         }
 
         const doorwayData = { side, position, type };
@@ -220,12 +256,110 @@ const initialRoom = {
   doorways: [
     { side: 'top', position: 1, type: 'door' },
     { side: 'right', position: 2, type: 'corridor' },
-    { side: 'bottom', position: 3, type: 'locked-door' }, // Added 'locked-door' type
+    { side: 'bottom', position: 3, type: 'locked-door' },
   ],
 };
 
 generateTree(initialRoom, existingRooms);
 
+// Union-Find class for grouping merged rooms
+class UnionFind {
+  constructor() {
+    this.parent = {};
+  }
+
+  find(u) {
+    if (this.parent[u] === undefined) {
+      this.parent[u] = u;
+    }
+    if (this.parent[u] !== u) {
+      this.parent[u] = this.find(this.parent[u]); // Path compression
+    }
+    return this.parent[u];
+  }
+
+  union(u, v) {
+    const pu = this.find(u);
+    const pv = this.find(v);
+    if (pu !== pv) {
+      this.parent[pu] = pv;
+    }
+  }
+}
+
+// Function to find adjacent room
+function findAdjacentRoom(room, doorway, rooms) {
+  const side = doorway.side;
+  const position = doorway.position;
+
+  let adjacentX = room.x;
+  let adjacentY = room.y;
+
+  if (side === 'top') {
+    adjacentY = room.y - 1; // Directly above
+    adjacentX = room.x + position;
+  } else if (side === 'bottom') {
+    adjacentY = room.y + room.height; // Directly below
+    adjacentX = room.x + position;
+  } else if (side === 'left') {
+    adjacentX = room.x - 1; // Directly to the left
+    adjacentY = room.y + position;
+  } else if (side === 'right') {
+    adjacentX = room.x + room.width; // Directly to the right
+    adjacentY = room.y + position;
+  }
+
+  // Find the adjacent room in rooms
+  return rooms.find(r => {
+    if (side === 'top' || side === 'bottom') {
+      return (
+        r.y === adjacentY &&
+        r.x <= adjacentX &&
+        adjacentX < r.x + r.width
+      );
+    } else {
+      return (
+        r.x === adjacentX &&
+        r.y <= adjacentY &&
+        adjacentY < r.y + r.height
+      );
+    }
+  });
+}
+
+// After generating existingRooms
+const uf = new UnionFind();
+
+// Iterate over rooms to union merged rooms
+existingRooms.forEach(room => {
+  room.doorways.forEach(doorway => {
+    if (doorway.type === 'merged') {
+      const adjacentRoom = findAdjacentRoom(room, doorway, existingRooms);
+      if (adjacentRoom) {
+        uf.union(room.id, adjacentRoom.id);
+      }
+    }
+  });
+});
+
+// Create a mapping from original group IDs to sequential group IDs
+const groupIdMap = new Map();
+let nextGroupId = 1;
+
+// Assign sequential group IDs to rooms
+existingRooms.forEach(room => {
+  const originalGroupId = uf.find(room.id);
+  if (!groupIdMap.has(originalGroupId)) {
+    groupIdMap.set(originalGroupId, nextGroupId++);
+  }
+  room.groupId = originalGroupId;
+  room.displayGroupId = groupIdMap.get(originalGroupId);
+});
+
 // Use existingRooms as the flattened rooms
 const flattenedRooms = ref(existingRooms);
 </script>
+
+<style>
+/* Add any styles you need here */
+</style>
