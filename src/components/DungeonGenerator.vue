@@ -1,11 +1,17 @@
 <template>
-  <DungeonMap :rooms="flattenedRooms" />
+  <DungeonMap :rooms="flattenedRooms" @roomClicked="handleRoomClick" />
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import DungeonMap from './DungeonMap.vue';
+import { createRoomDescriptions } from '../util/create-room-descriptions.mjs';
 
+const handleRoomClick = (roomId) => {
+  console.log(`Room ${roomId} was clicked!`);
+  console.log(roomDescriptions[roomId]);
+  // You can add your custom logic here for when a room is clicked
+};
 // Function to check for overlapping rooms with a gap
 function roomsOverlap(room1, room2) {
   const buffer = 1; // Gap of 1 tile between rooms
@@ -174,21 +180,24 @@ function generateTree(room, existingRooms = [], depth = 0) {
       if (maxPosition > 0) {
         const position = Math.floor(Math.random() * maxPosition) + 1;
 
-        // Randomly assign a type ('door', 'locked-door', 'corridor', 'stairs', or 'merged') based on weights
+        // Randomly assign a type ('door', 'locked-door', 'corridor', 'stairs', 'secret', or 'merged') based on weights
         const randomValue = Math.random();
         let type;
 
-        if (randomValue < 0.35) {
-          type = 'door'; // 35% chance for a regular door
-        } else if (randomValue < 0.5) {
-          type = 'locked-door'; // Next 15% (0.35 to 0.5) for a locked door
-        } else if (randomValue < 0.75) {
-          type = 'corridor'; // Next 25% (0.5 to 0.75) for a corridor
-        } else if (randomValue < 0.9) {
-          type = 'stairs'; // Next 15% (0.75 to 0.9) for stairs
+        if (randomValue < 0.3) {
+          type = 'door'; // 30% chance for a regular door
+        } else if (randomValue < 0.45) {
+          type = 'locked-door'; // Next 15%
+        } else if (randomValue < 0.7) {
+          type = 'corridor'; // Next 25%
+        } else if (randomValue < 0.85) {
+          type = 'stairs'; // Next 15%
+        } else if (randomValue < 0.95) {
+          type = 'secret'; // Next 10% for secret doors
         } else {
-          type = 'merged'; // Remaining 10% (0.9 to 1) for merged rooms
+          type = 'merged'; // Remaining 5%
         }
+
 
         const doorwayData = { side, position, type };
 
@@ -236,11 +245,6 @@ function generateTree(room, existingRooms = [], depth = 0) {
   // Update the room's doorways to only include successful doorways and fromParent doorways
   room.doorways = room.doorways.filter(d => d.fromParent || successfulDoorways.includes(d));
 
-  // If the room has no doorways left (except maybe the one from parent) and is not the initial room, it's a dead end
-  if (room.doorways.length === 0 && depth !== 0) {
-    // Optionally, you can remove the room from existingRooms
-    // For now, we'll leave it in as a dead-end room
-  }
 }
 
 // Reset nextRoomId before generating the dungeon
@@ -357,6 +361,8 @@ existingRooms.forEach(room => {
 });
 console.log(existingRooms);
 // Use existingRooms as the flattened rooms
+console.log(createRoomDescriptions(existingRooms));
+let roomDescriptions = createRoomDescriptions(existingRooms);
 const flattenedRooms = ref(existingRooms);
 </script>
 

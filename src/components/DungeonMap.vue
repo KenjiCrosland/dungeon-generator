@@ -6,6 +6,7 @@
 
 <script setup>
 import { onMounted, ref, watch } from 'vue';
+const emit = defineEmits(['roomClicked']);
 
 const props = defineProps({
   rooms: {
@@ -122,8 +123,13 @@ const drawRooms = (ctx) => {
   drawGroupNumbers(ctx);
 };
 
+let numberPositions = []; // Store positions of the group numbers
+let hoveredGroupId = null; // Track hovered group ID
+let clickedGroupId = null; // Track clicked group ID
+
 const drawGroupNumbers = (ctx) => {
   const tileSize = props.tileSize;
+  numberPositions = [];
 
   groupMap.forEach((group) => {
     const tileCoordinates = Array.from(group.tiles).map(tileKey => {
@@ -133,28 +139,37 @@ const drawGroupNumbers = (ctx) => {
 
     if (tileCoordinates.length === 0) return;
 
-    // Calculate centroid using exact positions
     const sumX = tileCoordinates.reduce((acc, tile) => acc + tile.x + 0.5, 0);
     const sumY = tileCoordinates.reduce((acc, tile) => acc + tile.y + 0.5, 0);
     let centroidX = sumX / tileCoordinates.length;
     let centroidY = sumY / tileCoordinates.length;
 
-    // Ensure centroid is within group's bounding box
     centroidX = Math.max(group.minX, Math.min(centroidX, group.maxX));
     centroidY = Math.max(group.minY, Math.min(centroidY, group.maxY));
 
-    // Convert to canvas coordinates
     const centerX = (centroidX - ctx.canvas.minX) * tileSize;
     const centerY = (centroidY - ctx.canvas.minY) * tileSize;
 
-    // Draw the number
+    numberPositions.push({
+      groupId: group.displayGroupId,
+      x: centerX,
+      y: centerY,
+      radius: 10,
+    });
+
+    // Change style for hovered or clicked state
     ctx.font = '14px Arial';
-    ctx.fillStyle = '#333'; // Dark gray color for text
+    if (group.displayGroupId === hoveredGroupId || group.displayGroupId === clickedGroupId) {
+      ctx.font = 'bold 16px Arial';
+    }
+    ctx.fillStyle = '#333';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(`${group.displayGroupId}`, centerX, centerY);
   });
 };
+
+
 
 const drawRoomOutline = (ctx, room) => {
   const { x, y, width, height, doorways } = room;
@@ -344,21 +359,127 @@ const extendWallsForMergedRooms = (ctx, room1, room2, doorway) => {
 };
 
 const drawCorridor = (ctx, room, doorway) => {
-  const doorwayType = doorway.type || 'door'; // Default to 'door' if undefined
+  const doorwayType = doorway.type || 'door';
 
   if (doorwayType === 'door') {
-    drawDoor(ctx, room, doorway, false); // Regular door
+    drawDoor(ctx, room, doorway, false);
   } else if (doorwayType === 'locked-door') {
-    drawDoor(ctx, room, doorway, true); // Locked door
+    drawDoor(ctx, room, doorway, true);
+  } else if (doorwayType === 'secret') {
+    drawSecretDoor(ctx, room, doorway); // New function for secret doors
   } else if (doorwayType === 'corridor') {
-    drawCorridorWalls(ctx, room, doorway); // Regular corridor
-  } else if (doorwayType === 'stairs' && room.id > doorway.connectedRoomId) { // Only draw for one room
-    drawStairs(ctx, room, doorway); // Stairs
+    drawCorridorWalls(ctx, room, doorway);
+  } else if (doorwayType === 'stairs' && room.id > doorway.connectedRoomId) {
+    drawStairs(ctx, room, doorway);
   } else if (doorwayType === 'merged') {
-    // Do not draw anything for merged connections
-    return;
+    // Do nothing for merged connections
   }
 };
+const drawSecretDoor = (ctx, room, doorway) => {
+  const { x, y, width, height } = room;
+  const tileSize = props.tileSize;
+  const offsetX = (x - ctx.canvas.minX) * tileSize;
+  const offsetY = (y - ctx.canvas.minY) * tileSize;
+
+  // Define the gap size (you've increased it to 1/2, so we'll use that)
+  const gapSize = tileSize / 2;
+
+  // Wall segments should be adjusted accordingly
+  const wallSegmentLength = (tileSize - gapSize) / 2;
+
+  ctx.strokeStyle = 'rgba(51, 51, 51, 0.8)';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+
+  if (doorway.side === 'top') {
+    const startX = offsetX + doorway.position * tileSize;
+    const startY = offsetY;
+
+    // Left wall segment
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(startX, startY - wallSegmentLength);
+    ctx.stroke();
+
+    // Right wall segment
+    ctx.beginPath();
+    ctx.moveTo(startX + tileSize, startY);
+    ctx.lineTo(startX + tileSize, startY - wallSegmentLength);
+    ctx.stroke();
+
+    // Connect the two segments with a horizontal line
+    ctx.beginPath();
+    ctx.moveTo(startX, startY - wallSegmentLength);
+    ctx.lineTo(startX + tileSize, startY - wallSegmentLength);
+    ctx.stroke();
+  } else if (doorway.side === 'bottom') {
+    const startX = offsetX + doorway.position * tileSize;
+    const startY = offsetY + height * tileSize;
+
+    // Left wall segment
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(startX, startY + wallSegmentLength);
+    ctx.stroke();
+
+    // Right wall segment
+    ctx.beginPath();
+    ctx.moveTo(startX + tileSize, startY);
+    ctx.lineTo(startX + tileSize, startY + wallSegmentLength);
+    ctx.stroke();
+
+    // Connect the two segments with a horizontal line
+    ctx.beginPath();
+    ctx.moveTo(startX, startY + wallSegmentLength);
+    ctx.lineTo(startX + tileSize, startY + wallSegmentLength);
+    ctx.stroke();
+  } else if (doorway.side === 'left') {
+    const startX = offsetX;
+    const startY = offsetY + doorway.position * tileSize;
+
+    // Top wall segment
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(startX - wallSegmentLength, startY);
+    ctx.stroke();
+
+    // Bottom wall segment
+    ctx.beginPath();
+    ctx.moveTo(startX, startY + tileSize);
+    ctx.lineTo(startX - wallSegmentLength, startY + tileSize);
+    ctx.stroke();
+
+    // Connect the two segments with a vertical line
+    ctx.beginPath();
+    ctx.moveTo(startX - wallSegmentLength, startY);
+    ctx.lineTo(startX - wallSegmentLength, startY + tileSize);
+    ctx.stroke();
+  } else if (doorway.side === 'right') {
+    const startX = offsetX + width * tileSize;
+    const startY = offsetY + doorway.position * tileSize;
+
+    // Top wall segment
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(startX + wallSegmentLength, startY);
+    ctx.stroke();
+
+    // Bottom wall segment
+    ctx.beginPath();
+    ctx.moveTo(startX, startY + tileSize);
+    ctx.lineTo(startX + wallSegmentLength, startY + tileSize);
+    ctx.stroke();
+
+    // Connect the two segments with a vertical line
+    ctx.beginPath();
+    ctx.moveTo(startX + wallSegmentLength, startY);
+    ctx.lineTo(startX + wallSegmentLength, startY + tileSize);
+    ctx.stroke();
+  }
+};
+
+
+
 
 const drawDoor = (ctx, room, doorway, isLocked) => {
   const { x, y, width, height } = room;
@@ -703,6 +824,71 @@ onMounted(() => {
 
   resizeCanvas();
   drawRooms(ctx);
+
+  // Handle mousemove event for hover effect
+  canvas.addEventListener('mousemove', (event) => {
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = event.clientX - rect.left;
+    const mouseY = event.clientY - rect.top;
+    let isHovering = false;
+
+    numberPositions.forEach(position => {
+      const distance = Math.sqrt(
+        (mouseX - position.x) ** 2 + (mouseY - position.y) ** 2
+      );
+      if (distance <= position.radius) {
+        hoveredGroupId = position.groupId;
+        isHovering = true;
+        canvas.style.cursor = 'pointer';
+      }
+    });
+
+    if (!isHovering) {
+      hoveredGroupId = null;
+      canvas.style.cursor = 'default';
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawRooms(ctx);
+  });
+
+  // Handle click event
+  canvas.addEventListener('click', (event) => {
+    const rect = canvas.getBoundingClientRect();
+    const clickX = event.clientX - rect.left;
+    const clickY = event.clientY - rect.top;
+
+    numberPositions.forEach(position => {
+      const distance = Math.sqrt(
+        (clickX - position.x) ** 2 + (clickY - position.y) ** 2
+      );
+      if (distance <= position.radius) {
+        clickedGroupId = position.groupId;
+        emit('roomClicked', position.groupId); // Emit the event with room number
+      }
+    });
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawRooms(ctx);
+  });
+
+  // Handle mousedown event for visual feedback
+  canvas.addEventListener('mousedown', (event) => {
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = event.clientX - rect.left;
+    const mouseY = event.clientY - rect.top;
+
+    numberPositions.forEach(position => {
+      const distance = Math.sqrt(
+        (mouseX - position.x) ** 2 + (mouseY - position.y) ** 2
+      );
+      if (distance <= position.radius) {
+        clickedGroupId = position.groupId;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawRooms(ctx);
+      }
+    });
+  });
 });
 
 watch(
