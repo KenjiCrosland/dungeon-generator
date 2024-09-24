@@ -146,18 +146,20 @@ function generateTree(room, existingRooms = [], depth = 0) {
     const parentDoorwayType = doorway.type;
 
     // Add the connecting doorway back to the parent and mark it appropriately
-    childDoorways.push({
+    const childDoorwayToParent = {
       side: oppositeSide,
       position: childDoorwayPosition,
       fromParent: true, // Mark to avoid processing it again
       type: parentDoorwayType, // Ensure the type is consistent
-    });
+    };
+
+    childDoorways.push(childDoorwayToParent);
 
     // For merged connections, both rooms need to know about the merged side
     if (parentDoorwayType === 'merged') {
       // Mark the sides as merged in both rooms
       doorway.merged = true; // In the parent room's doorway
-      childDoorways[childDoorways.length - 1].merged = true; // In the child room's doorway
+      childDoorwayToParent.merged = true; // In the child room's doorway
     }
 
     // Determine the number of additional doorways to add
@@ -181,7 +183,7 @@ function generateTree(room, existingRooms = [], depth = 0) {
       if (maxPosition > 0) {
         const position = Math.floor(Math.random() * maxPosition) + 1;
 
-        // Randomly assign a type ('door', 'locked-door', 'corridor', 'stairs', 'secret', or 'merged') based on weights
+        // Randomly assign a type based on weights
         const randomValue = Math.random();
         let type;
 
@@ -201,10 +203,7 @@ function generateTree(room, existingRooms = [], depth = 0) {
 
         const doorwayData = { side, position, type };
 
-        if (type === 'stairs') {
-          // Assign connectedRoomId for stairs to reference the parent room
-          doorwayData.connectedRoomId = room.id;
-        }
+        // We will assign connectedRoomId later after creating the new room
 
         childDoorways.push(doorwayData);
       }
@@ -225,6 +224,14 @@ function generateTree(room, existingRooms = [], depth = 0) {
     if (!overlaps) {
       // Now assign an ID to the new room
       newRoom.id = nextRoomId++;
+
+      // **Set connectedRoomId in doorways here**
+
+      // In the parent doorway
+      doorway.connectedRoomId = newRoom.id;
+
+      // In the child doorway back to the parent
+      childDoorwayToParent.connectedRoomId = room.id; // room.id is the parent room's ID
 
       // Proceed to generate child rooms
       generateTree(newRoom, existingRooms, depth + 1);
@@ -379,9 +386,46 @@ groupIdToRooms.forEach((roomsInGroup) => {
 // Replace existingRooms with newRooms
 existingRooms = newRooms;
 
-// Use existingRooms as the flattened rooms
+let newRoomIdCounter = 1;
+const oldIdToNewId = {};
+
+// Reassign IDs
+existingRooms.forEach(room => {
+  const oldId = room.id;
+  room.id = newRoomIdCounter++;
+  oldIdToNewId[oldId] = room.id;
+
+  if (room.sections) {
+    // If room is a merged room, remove IDs from sections
+    room.sections.forEach(section => {
+      delete section.id;
+    });
+  }
+});
+
+// Update connectedRoomIds in doorways
+existingRooms.forEach(room => {
+  const doorways = room.doorways || [];
+
+  doorways.forEach(doorway => {
+    if (doorway.connectedRoomId !== undefined) {
+      doorway.connectedRoomId = oldIdToNewId[doorway.connectedRoomId];
+    }
+  });
+
+  if (room.sections) {
+    // Update doorways in sections as well
+    room.sections.forEach(section => {
+      const sectionDoorways = section.doorways || [];
+      sectionDoorways.forEach(doorway => {
+        if (doorway.connectedRoomId !== undefined) {
+          doorway.connectedRoomId = oldIdToNewId[doorway.connectedRoomId];
+        }
+      });
+    });
+  }
+});
 console.log(existingRooms);
-console.log(createRoomDescriptions(existingRooms));
 let roomDescriptions = createRoomDescriptions(existingRooms);
 const flattenedRooms = ref(existingRooms);
 </script>

@@ -49,6 +49,8 @@ export function preprocessRooms(rooms) {
       // Merged room with sections
       const combinedRoom = {
         id: room.id,
+        type: 'merged',
+        sections: room.sections,
         x: Math.min(...room.sections.map((r) => r.x)),
         y: Math.min(...room.sections.map((r) => r.y)),
         width:
@@ -81,9 +83,72 @@ export function preprocessRooms(rooms) {
   return languageRooms;
 }
 
+// Function to add connectedRoomId to doorways
+function addConnectedRoomIds(rooms) {
+  // Create a map from room positions to room IDs
+  const positionToRoomId = new Map();
+  rooms.forEach((room) => {
+    const addTiles = (r) => {
+      for (let i = 0; i < r.width; i++) {
+        for (let j = 0; j < r.height; j++) {
+          const x = r.x + i;
+          const y = r.y + j;
+          const key = `${x},${y}`;
+          positionToRoomId.set(key, room.id);
+        }
+      }
+    };
+
+    if (room.type === 'merged') {
+      room.sections.forEach((section) => {
+        addTiles(section);
+      });
+    } else {
+      addTiles(room);
+    }
+  });
+
+  // For each room, for each doorway, find the connected room and add or overwrite connectedRoomId
+  rooms.forEach((room) => {
+    const doorways = room.doorways || [];
+    doorways.forEach((doorway) => {
+      if (doorway.type === 'merged') {
+        // Merged doorways connect to internal sections, skip
+        return;
+      }
+
+      const side = doorway.side;
+      const position = doorway.position;
+
+      let x = room.x;
+      let y = room.y;
+
+      if (side === 'top') {
+        x = x + position;
+        y = y - 1;
+      } else if (side === 'bottom') {
+        x = x + position;
+        y = y + room.height;
+      } else if (side === 'left') {
+        x = x - 1;
+        y = y + position;
+      } else if (side === 'right') {
+        x = x + room.width;
+        y = y + position;
+      }
+
+      const key = `${x},${y}`;
+      const connectedRoomId = positionToRoomId.get(key);
+      if (connectedRoomId !== undefined && connectedRoomId !== room.id) {
+        doorway.connectedRoomId = connectedRoomId;
+      }
+    });
+  });
+}
+
 // Function to generate room descriptions
-export function describeRoom(room) {
-  const numberOfTiles = room.area / 25; // Now we correctly use the area passed into the room object
+function describeRoom(room) {
+  const numberOfTiles = room.area / 25;
   let sizeDescription;
 
   if (numberOfTiles <= 20) {
@@ -94,7 +159,7 @@ export function describeRoom(room) {
     sizeDescription = 'large';
   }
 
-  const squareFeet = room.area; // Now the area is correctly calculated
+  const squareFeet = room.area;
 
   const sideToDirection = {
     top: 'north',
@@ -103,72 +168,136 @@ export function describeRoom(room) {
     right: 'east',
   };
 
-  // Handle the list of doorways and adjust for Oxford comma and secret door description
-  const doorDescriptions = room.doorways
+  const doorways = room.doorways || [];
+
+  // Collect doorways into exits
+  const exits = doorways
     .map((doorway) => {
-      if (!doorway || !doorway.type || !doorway.side) return ''; // Ignore invalid or incomplete doorways
+      if (!doorway || !doorway.type || !doorway.side) return null;
+
       const direction = sideToDirection[doorway.side] || 'unknown direction';
 
-      if (doorway.type === 'door') {
-        return `an unlocked door to the ${direction}`;
+      let description = '';
+
+      if (doorway.type === 'secret') {
+        description = 'a secret door to the ' + direction;
       } else if (doorway.type === 'locked-door') {
-        return `a locked door to the ${direction}`;
-      } else if (doorway.type === 'secret') {
-        return 'hidden somewhere is an entrance to a secret room'; // General secret entrance description
+        description = 'a locked door to the ' + direction;
+      } else if (doorway.type === 'door') {
+        description = 'a door to the ' + direction;
       } else if (doorway.type === 'corridor') {
-        return `a corridor leading to the ${direction}`;
+        description = 'a corridor leading to the ' + direction;
       } else if (doorway.type === 'stairs') {
-        return `stairs leading ${
-          doorway.side === 'top' || doorway.side === 'left' ? 'up' : 'down'
-        } to the ${direction}`;
+        // Determine if stairs are leading up or down
+        let stairsDirection = '';
+        if (doorway.connectedRoomId !== undefined) {
+          stairsDirection = doorway.connectedRoomId < room.id ? 'down' : 'up';
+        }
+        description = `stairs leading ${stairsDirection} to the ${direction}`;
       } else {
-        return ''; // In case of an unknown doorway type, return an empty string
+        description = 'an exit to the ' + direction;
       }
+
+      return {
+        description,
+        type: doorway.type,
+        connectedRoomId: doorway.connectedRoomId,
+        direction,
+        doorway, // Include the original doorway for reference
+      };
     })
-    .filter((desc) => desc !== ''); // Remove any empty descriptions
+    .filter((exit) => exit !== null);
 
-  // Remove duplicate door descriptions (since merged rooms may have overlapping doorways)
-  const uniqueDoorDescriptions = [...new Set(doorDescriptions)];
+  // Remove duplicates
+  const uniqueExits = [];
+  const exitDescriptionsSet = new Set();
+  exits.forEach((exit) => {
+    if (!exitDescriptionsSet.has(exit.description)) {
+      uniqueExits.push(exit);
+      exitDescriptionsSet.add(exit.description);
+    }
+  });
 
-  // Join the door descriptions using proper grammar rules
-  let doorDescriptionText = '';
-  if (uniqueDoorDescriptions.length === 1) {
-    doorDescriptionText = uniqueDoorDescriptions[0];
-  } else if (uniqueDoorDescriptions.length === 2) {
-    // Only two elements, no need for a comma
-    doorDescriptionText = `${uniqueDoorDescriptions[0]} and ${uniqueDoorDescriptions[1]}`;
-  } else if (uniqueDoorDescriptions.length > 2) {
-    // More than two elements, use the Oxford comma
-    const lastDoor = uniqueDoorDescriptions.pop();
-    doorDescriptionText = `${uniqueDoorDescriptions.join(
-      ', ',
-    )}, and ${lastDoor}`;
+  // Start with the default description
+  let description = `This is a ${sizeDescription} room (${squareFeet} square feet).`;
+
+  // Set to keep track of doorways already mentioned
+  const mentionedDoorways = new Set();
+
+  // Check for special cases
+  const connectionsFromLowerIdRooms = doorways.filter(
+    (doorway) =>
+      doorway.connectedRoomId !== undefined &&
+      doorway.connectedRoomId < room.id,
+  );
+  const onlyAccessIsLockedDoor =
+    connectionsFromLowerIdRooms.length > 0 &&
+    connectionsFromLowerIdRooms.every(
+      (doorway) => doorway.type === 'locked-door',
+    );
+
+  if (onlyAccessIsLockedDoor) {
+    const firstLockedDoor = connectionsFromLowerIdRooms[0];
+    const direction = sideToDirection[firstLockedDoor.side];
+    description += ` The only access is through a locked door to the ${direction}.`;
+
+    // Mark this doorway as mentioned
+    mentionedDoorways.add(firstLockedDoor);
+  }
+
+  if (doorways.length > 0 && doorways.every((d) => d.type === 'secret')) {
+    // If all doorways are secret
+    description += ' This is a hidden room with a secret entrance.';
+
+    // Mark all doorways as mentioned
+    doorways.forEach((d) => mentionedDoorways.add(d));
+  }
+
+  // Include exits
+  const exitsToDescribe = uniqueExits.filter(
+    (exit) => !mentionedDoorways.has(exit.doorway),
+  );
+
+  if (exitsToDescribe.length === 0) {
+    if (
+      !onlyAccessIsLockedDoor &&
+      !(doorways.length > 0 && doorways.every((d) => d.type === 'secret'))
+    ) {
+      description += ' There are no visible exits.';
+    }
+  } else {
+    const exitDescriptions = exitsToDescribe.map((exit) => exit.description);
+    const exitText = listToText(exitDescriptions);
+    description += ` There ${
+      exitDescriptions.length === 1 ? 'is' : 'are'
+    } ${exitText}.`;
   }
 
   // Include shape description only if L-shaped
-  let shapeDescription = '';
   if (room.shape === 'L-shaped') {
-    shapeDescription = ' The room is L-shaped.';
+    description += ' The room is L-shaped.';
   }
 
-  // Adjust verb agreement based on the number of doorways
-  const verb = uniqueDoorDescriptions.length === 1 ? 'is' : 'are';
+  return description.trim();
+}
 
-  // Handle cases where there are no doorways
-  let doorSentence = '';
-  if (uniqueDoorDescriptions.length > 0) {
-    doorSentence = `There ${verb} ${doorDescriptionText}.`;
+// Helper function to format lists into natural language
+function listToText(list) {
+  if (list.length === 1) {
+    return list[0];
+  } else if (list.length === 2) {
+    return `${list[0]} and ${list[1]}`;
   } else {
-    doorSentence = 'There are no visible exits.';
+    const lastItem = list.pop();
+    return `${list.join(', ')}, and ${lastItem}`;
   }
-
-  const description = `This is a ${sizeDescription} room (${squareFeet} square feet). ${doorSentence}${shapeDescription}`;
-
-  return description;
 }
 
 // Main function to create room descriptions based on room data
 export function createRoomDescriptions(rooms) {
+  // First, add connectedRoomIds to doorways
+  addConnectedRoomIds(rooms);
+
   const languageRooms = preprocessRooms(rooms);
   const roomDescriptions = {};
 
