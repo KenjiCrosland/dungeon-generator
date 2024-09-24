@@ -3,87 +3,76 @@ function calculateRectangularRoomArea(room) {
   return room.width * room.height * 25; // Each tile is 25 square feet (5x5)
 }
 
-// Helper function to calculate area for L-shaped rooms
-function calculateLShapedRoomArea(room1, room2) {
-  // Calculate the overlapping area
-  const overlapWidth =
-    Math.min(room1.x + room1.width, room2.x + room2.width) -
-    Math.max(room1.x, room2.x);
-  const overlapHeight =
-    Math.min(room1.y + room1.height, room2.y + room2.height) -
-    Math.max(room1.y, room2.y);
+// Helper function to calculate area for merged rooms
+function calculateMergedRoomArea(sections) {
+  const tileSet = new Set();
 
-  // If there's no overlap, use only the jutting part
-  const overlapArea =
-    overlapWidth > 0 && overlapHeight > 0
-      ? overlapWidth * overlapHeight * 25
-      : 0;
+  sections.forEach((room) => {
+    for (let i = 0; i < room.width; i++) {
+      for (let j = 0; j < room.height; j++) {
+        const tileX = room.x + i;
+        const tileY = room.y + j;
+        const tileKey = `${tileX},${tileY}`;
+        tileSet.add(tileKey);
+      }
+    }
+  });
 
-  // Total area of both rooms
-  const totalAreaRoom1 = room1.width * room1.height * 25;
-  const totalAreaRoom2 = room2.width * room2.height * 25;
-
-  // Subtract the overlapping area from the total to get the L-shaped area
-  return totalAreaRoom1 + totalAreaRoom2 - overlapArea;
+  // Total area is number of tiles * 25 (since each tile is 5x5 ft)
+  return tileSet.size * 25;
 }
 
 // Helper function to determine room shape for merged rooms
-function determineRoomShape(mergedRooms) {
-  const room1 = mergedRooms[0];
-  const room2 = mergedRooms[1];
-  const widthDiff = Math.abs(room1.width - room2.width);
-  const heightDiff = Math.abs(room1.height - room2.height);
+function determineRoomShape(sections) {
+  const minX = Math.min(...sections.map((r) => r.x));
+  const minY = Math.min(...sections.map((r) => r.y));
+  const maxX = Math.max(...sections.map((r) => r.x + r.width));
+  const maxY = Math.max(...sections.map((r) => r.y + r.height));
 
-  // If the difference in width or height is more than 1, it's L-shaped
-  if (widthDiff > 1 || heightDiff > 1) {
+  const boundingArea = (maxX - minX) * (maxY - minY);
+
+  const actualArea = calculateMergedRoomArea(sections) / 25; // Number of tiles
+
+  if (actualArea < boundingArea) {
     return 'L-shaped';
   }
 
-  // Otherwise, we won't mention the shape
-  return null;
+  return null; // If it's rectangular
 }
 
-// Function to preprocess rooms and handle merged rooms based on groupId
-export function preprocessMergedRooms(rooms) {
+// Function to preprocess rooms and handle merged rooms
+export function preprocessRooms(rooms) {
   const languageRooms = [];
-  const visitedGroups = new Set(); // Track visited groupIds to avoid processing a group multiple times
 
   rooms.forEach((room) => {
-    // Check if the room is part of a merged group
-    if (visitedGroups.has(room.groupId)) return; // Skip already processed groups
-
-    const mergedRooms = rooms.filter((r) => r.groupId === room.groupId);
-
-    // If multiple rooms share the same groupId, treat them as a merged room
-    if (mergedRooms.length > 1) {
-      // Combine the dimensions of the merged rooms
+    if (room.type === 'merged') {
+      // Merged room with sections
       const combinedRoom = {
-        x: Math.min(...mergedRooms.map((r) => r.x)),
-        y: Math.min(...mergedRooms.map((r) => r.y)),
+        id: room.id,
+        x: Math.min(...room.sections.map((r) => r.x)),
+        y: Math.min(...room.sections.map((r) => r.y)),
         width:
-          Math.max(...mergedRooms.map((r) => r.x + r.width)) -
-          Math.min(...mergedRooms.map((r) => r.x)),
+          Math.max(...room.sections.map((r) => r.x + r.width)) -
+          Math.min(...room.sections.map((r) => r.x)),
         height:
-          Math.max(...mergedRooms.map((r) => r.y + r.height)) -
-          Math.min(...mergedRooms.map((r) => r.y)),
-        doorways: mergedRooms.flatMap((r) => r.doorways),
-        ids: mergedRooms.map((r) => r.id), // Include all IDs
-        groupId: room.groupId,
-        displayGroupId: room.displayGroupId,
-        shape: determineRoomShape(mergedRooms), // Only return L-shaped if applicable
-        area: calculateLShapedRoomArea(mergedRooms[0], mergedRooms[1]), // Calculate the area correctly for L-shaped rooms
+          Math.max(...room.sections.map((r) => r.y + r.height)) -
+          Math.min(...room.sections.map((r) => r.y)),
+        doorways: room.sections.flatMap((r) =>
+          r.doorways.filter((d) => d.type !== 'merged'),
+        ),
+        shape: determineRoomShape(room.sections),
+        area: calculateMergedRoomArea(room.sections),
       };
-
-      // Mark the group as processed
-      visitedGroups.add(room.groupId);
 
       // Add the combined room to the language rooms
       languageRooms.push(combinedRoom);
     } else {
-      // No merged rooms, treat this room as an individual and calculate the area
+      // Simple room
       const roomWithArea = {
         ...room,
         area: calculateRectangularRoomArea(room),
+        // Exclude 'merged' doorways if any
+        doorways: room.doorways.filter((d) => d.type !== 'merged'),
       };
       languageRooms.push(roomWithArea);
     }
@@ -125,7 +114,7 @@ export function describeRoom(room) {
       } else if (doorway.type === 'locked-door') {
         return `a locked door to the ${direction}`;
       } else if (doorway.type === 'secret') {
-        return 'Hidden somewhere is an entrance to a secret room'; // General secret entrance description
+        return 'hidden somewhere is an entrance to a secret room'; // General secret entrance description
       } else if (doorway.type === 'corridor') {
         return `a corridor leading to the ${direction}`;
       } else if (doorway.type === 'stairs') {
@@ -138,17 +127,22 @@ export function describeRoom(room) {
     })
     .filter((desc) => desc !== ''); // Remove any empty descriptions
 
+  // Remove duplicate door descriptions (since merged rooms may have overlapping doorways)
+  const uniqueDoorDescriptions = [...new Set(doorDescriptions)];
+
   // Join the door descriptions using proper grammar rules
   let doorDescriptionText = '';
-  if (doorDescriptions.length === 1) {
-    doorDescriptionText = doorDescriptions[0];
-  } else if (doorDescriptions.length === 2) {
+  if (uniqueDoorDescriptions.length === 1) {
+    doorDescriptionText = uniqueDoorDescriptions[0];
+  } else if (uniqueDoorDescriptions.length === 2) {
     // Only two elements, no need for a comma
-    doorDescriptionText = `${doorDescriptions[0]} and ${doorDescriptions[1]}`;
-  } else if (doorDescriptions.length > 2) {
+    doorDescriptionText = `${uniqueDoorDescriptions[0]} and ${uniqueDoorDescriptions[1]}`;
+  } else if (uniqueDoorDescriptions.length > 2) {
     // More than two elements, use the Oxford comma
-    const lastDoor = doorDescriptions.pop();
-    doorDescriptionText = `${doorDescriptions.join(', ')}, and ${lastDoor}`;
+    const lastDoor = uniqueDoorDescriptions.pop();
+    doorDescriptionText = `${uniqueDoorDescriptions.join(
+      ', ',
+    )}, and ${lastDoor}`;
   }
 
   // Include shape description only if L-shaped
@@ -157,23 +151,35 @@ export function describeRoom(room) {
     shapeDescription = ' The room is L-shaped.';
   }
 
-  const description = `This is a ${sizeDescription} room (${squareFeet} square feet). There ${
-    doorDescriptions.length === 1 ? 'is' : 'are'
-  } ${doorDescriptionText}.${shapeDescription}`;
+  // Adjust verb agreement based on the number of doorways
+  const verb = uniqueDoorDescriptions.length === 1 ? 'is' : 'are';
+
+  // Handle cases where there are no doorways
+  let doorSentence = '';
+  if (uniqueDoorDescriptions.length > 0) {
+    doorSentence = `There ${verb} ${doorDescriptionText}.`;
+  } else {
+    doorSentence = 'There are no visible exits.';
+  }
+
+  const description = `This is a ${sizeDescription} room (${squareFeet} square feet). ${doorSentence}${shapeDescription}`;
 
   return description;
 }
 
 // Main function to create room descriptions based on room data
 export function createRoomDescriptions(rooms) {
-  const languageRooms = preprocessMergedRooms(rooms);
+  const languageRooms = preprocessRooms(rooms);
   const roomDescriptions = {};
 
   languageRooms.forEach((room) => {
     const description = describeRoom(room);
-    if (room.ids) {
-      room.ids.forEach((id) => {
-        roomDescriptions[id] = description;
+    // For merged rooms, assign the description to the merged room ID and optionally to its sections
+    if (room.type === 'merged') {
+      roomDescriptions[room.id] = description;
+      // Optionally, assign the same description to individual sections
+      room.sections.forEach((section) => {
+        roomDescriptions[section.id] = description;
       });
     } else {
       roomDescriptions[room.id] = description;

@@ -3,7 +3,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref } from 'vue';
 import DungeonMap from './DungeonMap.vue';
 import { createRoomDescriptions } from '../util/create-room-descriptions.mjs';
 
@@ -12,6 +12,7 @@ const handleRoomClick = (roomId) => {
   console.log(roomDescriptions[roomId]);
   // You can add your custom logic here for when a room is clicked
 };
+
 // Function to check for overlapping rooms with a gap
 function roomsOverlap(room1, room2) {
   const buffer = 1; // Gap of 1 tile between rooms
@@ -198,7 +199,6 @@ function generateTree(room, existingRooms = [], depth = 0) {
           type = 'merged'; // Remaining 5%
         }
 
-
         const doorwayData = { side, position, type };
 
         if (type === 'stairs') {
@@ -244,14 +244,13 @@ function generateTree(room, existingRooms = [], depth = 0) {
 
   // Update the room's doorways to only include successful doorways and fromParent doorways
   room.doorways = room.doorways.filter(d => d.fromParent || successfulDoorways.includes(d));
-
 }
 
 // Reset nextRoomId before generating the dungeon
 nextRoomId = 1;
 
 // Initialize existingRooms and generate the tree
-const existingRooms = [];
+let existingRooms = [];
 const initialRoom = {
   x: 1,
   y: 1,
@@ -346,21 +345,42 @@ existingRooms.forEach(room => {
   });
 });
 
-// Create a mapping from original group IDs to sequential group IDs
-const groupIdMap = new Map();
-let nextGroupId = 1;
+// Process existingRooms to combine merged rooms
+const groupIdToRooms = new Map();
 
-// Assign sequential group IDs to rooms
 existingRooms.forEach(room => {
-  const originalGroupId = uf.find(room.id);
-  if (!groupIdMap.has(originalGroupId)) {
-    groupIdMap.set(originalGroupId, nextGroupId++);
+  const groupId = uf.find(room.id);
+  if (!groupIdToRooms.has(groupId)) {
+    groupIdToRooms.set(groupId, []);
   }
-  room.groupId = originalGroupId;
-  room.displayGroupId = groupIdMap.get(originalGroupId);
+  groupIdToRooms.get(groupId).push(room);
 });
-console.log(existingRooms);
+
+const newRooms = [];
+let nextMergedRoomId = nextRoomId; // Continue ID numbering
+
+groupIdToRooms.forEach((roomsInGroup) => {
+  if (roomsInGroup.length === 1) {
+    // Only one room in this group, keep it as is
+    const room = roomsInGroup[0];
+    newRooms.push(room);
+  } else {
+    // Multiple rooms in this group, create a merged room
+    const mergedRoom = {
+      id: nextMergedRoomId++,
+      type: "merged",
+      sections: roomsInGroup,
+      doorways: [], // You can handle doorways at the merged room level if needed
+    };
+    newRooms.push(mergedRoom);
+  }
+});
+
+// Replace existingRooms with newRooms
+existingRooms = newRooms;
+
 // Use existingRooms as the flattened rooms
+console.log(existingRooms);
 console.log(createRoomDescriptions(existingRooms));
 let roomDescriptions = createRoomDescriptions(existingRooms);
 const flattenedRooms = ref(existingRooms);

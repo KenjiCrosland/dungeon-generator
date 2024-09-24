@@ -26,8 +26,22 @@ const resizeCanvas = () => {
   const tileSize = props.tileSize;
 
   // Calculate minimum and maximum coordinates
-  const allX = props.rooms.flatMap(room => [room.x, room.x + room.width]);
-  const allY = props.rooms.flatMap(room => [room.y, room.y + room.height]);
+  const allX = props.rooms.flatMap(room => {
+    if (room.type === 'merged') {
+      return room.sections.flatMap(section => [section.x, section.x + section.width]);
+    } else {
+      return [room.x, room.x + room.width];
+    }
+  });
+
+  const allY = props.rooms.flatMap(room => {
+    if (room.type === 'merged') {
+      return room.sections.flatMap(section => [section.y, section.y + section.height]);
+    } else {
+      return [room.y, room.y + room.height];
+    }
+  });
+
   let minX = Math.min(...allX);
   let maxX = Math.max(...allX);
   let minY = Math.min(...allY);
@@ -79,34 +93,47 @@ const computeGroupMap = () => {
   groupMap = new Map();
 
   props.rooms.forEach(room => {
-    const groupId = room.displayGroupId || room.id; // Use room.id if displayGroupId is not set
-    if (!groupMap.has(groupId)) {
-      groupMap.set(groupId, {
+    const roomId = room.id;
+
+    if (!groupMap.has(roomId)) {
+      groupMap.set(roomId, {
         tiles: new Set(),
         minX: Infinity,
         maxX: -Infinity,
         minY: Infinity,
         maxY: -Infinity,
-        displayGroupId: groupId,
+        roomId: roomId,
       });
     }
-    const group = groupMap.get(groupId);
-    // Collect all tiles occupied by this room
-    for (let i = 0; i < room.width; i++) {
-      for (let j = 0; j < room.height; j++) {
-        const tileX = room.x + i;
-        const tileY = room.y + j;
-        const tileKey = `${tileX},${tileY}`;
-        group.tiles.add(tileKey);
+    const group = groupMap.get(roomId);
 
-        // Update group's bounding box
-        group.minX = Math.min(group.minX, tileX);
-        group.maxX = Math.max(group.maxX, tileX + 1);
-        group.minY = Math.min(group.minY, tileY);
-        group.maxY = Math.max(group.maxY, tileY + 1);
-      }
+    // Handle merged rooms
+    if (room.type === 'merged') {
+      room.sections.forEach(section => {
+        collectRoomTiles(group, section);
+      });
+    } else {
+      collectRoomTiles(group, room);
     }
   });
+};
+
+const collectRoomTiles = (group, room) => {
+  // Collect all tiles occupied by this room
+  for (let i = 0; i < room.width; i++) {
+    for (let j = 0; j < room.height; j++) {
+      const tileX = room.x + i;
+      const tileY = room.y + j;
+      const tileKey = `${tileX},${tileY}`;
+      group.tiles.add(tileKey);
+
+      // Update group's bounding box
+      group.minX = Math.min(group.minX, tileX);
+      group.maxX = Math.max(group.maxX, tileX + 1);
+      group.minY = Math.min(group.minY, tileY);
+      group.maxY = Math.max(group.maxY, tileY + 1);
+    }
+  }
 };
 
 const drawRooms = (ctx) => {
@@ -116,18 +143,25 @@ const drawRooms = (ctx) => {
 
   // Draw room outlines
   props.rooms.forEach(room => {
-    drawRoomOutline(ctx, room);
+    if (room.type === 'merged') {
+      // For merged rooms, draw each section
+      room.sections.forEach(section => {
+        drawRoomOutline(ctx, section);
+      });
+    } else {
+      drawRoomOutline(ctx, room);
+    }
   });
 
-  // Draw group numbers
-  drawGroupNumbers(ctx);
+  // Draw room numbers
+  drawRoomNumbers(ctx);
 };
 
-let numberPositions = []; // Store positions of the group numbers
-let hoveredGroupId = null; // Track hovered group ID
-let clickedGroupId = null; // Track clicked group ID
+let numberPositions = []; // Store positions of the room numbers
+let hoveredRoomId = null; // Track hovered room ID
+let clickedRoomId = null; // Track clicked room ID
 
-const drawGroupNumbers = (ctx) => {
+const drawRoomNumbers = (ctx) => {
   const tileSize = props.tileSize;
   numberPositions = [];
 
@@ -151,7 +185,7 @@ const drawGroupNumbers = (ctx) => {
     const centerY = (centroidY - ctx.canvas.minY) * tileSize;
 
     numberPositions.push({
-      groupId: group.displayGroupId,
+      roomId: group.roomId,
       x: centerX,
       y: centerY,
       radius: 10,
@@ -159,13 +193,13 @@ const drawGroupNumbers = (ctx) => {
 
     // Change style for hovered or clicked state
     ctx.font = '14px Arial';
-    if (group.displayGroupId === hoveredGroupId || group.displayGroupId === clickedGroupId) {
+    if (group.roomId === hoveredRoomId || group.roomId === clickedRoomId) {
       ctx.font = 'bold 16px Arial';
     }
     ctx.fillStyle = '#333';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`${group.displayGroupId}`, centerX, centerY);
+    ctx.fillText(`${group.roomId}`, centerX, centerY);
   });
 };
 
@@ -274,8 +308,17 @@ const findAdjacentRoom = (room, doorway) => {
     adjacentY = room.y + position;
   }
 
-  // Find the adjacent room in props.rooms
-  return props.rooms.find(r => {
+  // Find the adjacent room in props.rooms or in merged room sections
+  let allRooms = [];
+  props.rooms.forEach(r => {
+    if (r.type === 'merged') {
+      allRooms.push(...r.sections);
+    } else {
+      allRooms.push(r);
+    }
+  });
+
+  return allRooms.find(r => {
     if (side === 'top' || side === 'bottom') {
       return (
         r.y === adjacentY &&
@@ -366,7 +409,7 @@ const drawCorridor = (ctx, room, doorway) => {
   } else if (doorwayType === 'locked-door') {
     drawDoor(ctx, room, doorway, true);
   } else if (doorwayType === 'secret') {
-    drawSecretDoor(ctx, room, doorway); // New function for secret doors
+    drawSecretDoor(ctx, room, doorway);
   } else if (doorwayType === 'corridor') {
     drawCorridorWalls(ctx, room, doorway);
   } else if (doorwayType === 'stairs' && room.id > doorway.connectedRoomId) {
@@ -837,14 +880,14 @@ onMounted(() => {
         (mouseX - position.x) ** 2 + (mouseY - position.y) ** 2
       );
       if (distance <= position.radius) {
-        hoveredGroupId = position.groupId;
+        hoveredRoomId = position.roomId;
         isHovering = true;
         canvas.style.cursor = 'pointer';
       }
     });
 
     if (!isHovering) {
-      hoveredGroupId = null;
+      hoveredRoomId = null;
       canvas.style.cursor = 'default';
     }
 
@@ -863,8 +906,8 @@ onMounted(() => {
         (clickX - position.x) ** 2 + (clickY - position.y) ** 2
       );
       if (distance <= position.radius) {
-        clickedGroupId = position.groupId;
-        emit('roomClicked', position.groupId); // Emit the event with room number
+        clickedRoomId = position.roomId;
+        emit('roomClicked', position.roomId); // Emit the event with room ID
       }
     });
 
@@ -883,7 +926,7 @@ onMounted(() => {
         (mouseX - position.x) ** 2 + (mouseY - position.y) ** 2
       );
       if (distance <= position.radius) {
-        clickedGroupId = position.groupId;
+        clickedRoomId = position.roomId;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         drawRooms(ctx);
       }
