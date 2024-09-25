@@ -386,6 +386,8 @@ groupIdToRooms.forEach((roomsInGroup) => {
 // Replace existingRooms with newRooms
 existingRooms = newRooms;
 
+// After merging rooms and before using existingRooms
+// Reassign IDs to ensure they are sequential
 let newRoomIdCounter = 1;
 const oldIdToNewId = {};
 
@@ -396,9 +398,13 @@ existingRooms.forEach(room => {
   oldIdToNewId[oldId] = room.id;
 
   if (room.sections) {
-    // If room is a merged room, remove IDs from sections
+    // If room is a merged room, remove IDs from sections and update mapping
     room.sections.forEach(section => {
-      delete section.id;
+      const sectionOldId = section.id;
+      if (sectionOldId !== undefined) {
+        oldIdToNewId[sectionOldId] = room.id; // Map section ID to merged room ID
+        delete section.id;
+      }
     });
   }
 });
@@ -425,6 +431,7 @@ existingRooms.forEach(room => {
     });
   }
 });
+
 console.log(existingRooms);
 let roomDescriptions = createRoomDescriptions(existingRooms);
 const flattenedRooms = ref(existingRooms);

@@ -170,8 +170,12 @@ function describeRoom(room) {
 
   const doorways = room.doorways || [];
 
+  // Separate secret doorways from other doorways
+  const secretDoorways = doorways.filter((d) => d.type === 'secret');
+  const nonSecretDoorways = doorways.filter((d) => d.type !== 'secret');
+
   // Collect doorways into exits
-  const exits = doorways
+  const exits = nonSecretDoorways
     .map((doorway) => {
       if (!doorway || !doorway.type || !doorway.side) return null;
 
@@ -179,9 +183,7 @@ function describeRoom(room) {
 
       let description = '';
 
-      if (doorway.type === 'secret') {
-        description = 'a secret door to the ' + direction;
-      } else if (doorway.type === 'locked-door') {
+      if (doorway.type === 'locked-door') {
         description = 'a locked door to the ' + direction;
       } else if (doorway.type === 'door') {
         description = 'a door to the ' + direction;
@@ -230,11 +232,16 @@ function describeRoom(room) {
       doorway.connectedRoomId !== undefined &&
       doorway.connectedRoomId < room.id,
   );
+
   const onlyAccessIsLockedDoor =
     connectionsFromLowerIdRooms.length > 0 &&
     connectionsFromLowerIdRooms.every(
       (doorway) => doorway.type === 'locked-door',
     );
+
+  const onlyAccessIsSecretDoor =
+    connectionsFromLowerIdRooms.length > 0 &&
+    connectionsFromLowerIdRooms.every((doorway) => doorway.type === 'secret');
 
   if (onlyAccessIsLockedDoor) {
     const firstLockedDoor = connectionsFromLowerIdRooms[0];
@@ -243,34 +250,37 @@ function describeRoom(room) {
 
     // Mark this doorway as mentioned
     mentionedDoorways.add(firstLockedDoor);
+  } else if (onlyAccessIsSecretDoor) {
+    description += ' This room is only accessible via a secret entrance.';
+
+    // Mark secret doorways as mentioned
+    secretDoorways.forEach((d) => mentionedDoorways.add(d));
   }
 
-  if (doorways.length > 0 && doorways.every((d) => d.type === 'secret')) {
-    // If all doorways are secret
-    description += ' This is a hidden room with a secret entrance.';
-
-    // Mark all doorways as mentioned
-    doorways.forEach((d) => mentionedDoorways.add(d));
-  }
-
-  // Include exits
-  const exitsToDescribe = uniqueExits.filter(
-    (exit) => !mentionedDoorways.has(exit.doorway),
-  );
-
-  if (exitsToDescribe.length === 0) {
-    if (
-      !onlyAccessIsLockedDoor &&
-      !(doorways.length > 0 && doorways.every((d) => d.type === 'secret'))
-    ) {
+  if (nonSecretDoorways.length === 0) {
+    // No non-secret doorways
+    if (secretDoorways.length > 0 && !onlyAccessIsSecretDoor) {
+      description += ' Somewhere in the room is a secret entrance.';
+    } else if (!onlyAccessIsLockedDoor && !onlyAccessIsSecretDoor) {
       description += ' There are no visible exits.';
     }
   } else {
-    const exitDescriptions = exitsToDescribe.map((exit) => exit.description);
-    const exitText = listToText(exitDescriptions);
-    description += ` There ${
-      exitDescriptions.length === 1 ? 'is' : 'are'
-    } ${exitText}.`;
+    // Include exits
+    const exitsToDescribe = uniqueExits.filter(
+      (exit) => !mentionedDoorways.has(exit.doorway),
+    );
+
+    if (exitsToDescribe.length > 0) {
+      const exitDescriptions = exitsToDescribe.map((exit) => exit.description);
+      const exitText = listToText(exitDescriptions);
+      description += ` There is ${exitText}.`;
+    } else if (!onlyAccessIsLockedDoor && !onlyAccessIsSecretDoor) {
+      description += ' There are no visible exits.';
+    }
+
+    if (secretDoorways.length > 0 && !onlyAccessIsSecretDoor) {
+      description += ' Somewhere in the room is a secret entrance.';
+    }
   }
 
   // Include shape description only if L-shaped
