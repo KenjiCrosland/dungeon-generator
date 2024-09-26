@@ -193,7 +193,7 @@ function describeRoom(room) {
         // Determine if stairs are leading up or down
         let stairsDirection = '';
         if (doorway.connectedRoomId !== undefined) {
-          stairsDirection = doorway.connectedRoomId < room.id ? 'down' : 'up';
+          stairsDirection = doorway.connectedRoomId > room.id ? 'down' : 'up';
         }
         description = `stairs leading ${stairsDirection} to the ${direction}`;
       } else {

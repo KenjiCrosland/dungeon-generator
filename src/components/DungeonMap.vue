@@ -146,12 +146,14 @@ const drawRooms = (ctx) => {
     if (room.type === 'merged') {
       // For merged rooms, draw each section
       room.sections.forEach(section => {
+        section.id = room.id; // Assign parent room id to section
         drawRoomOutline(ctx, section);
       });
     } else {
       drawRoomOutline(ctx, room);
     }
   });
+
 
   // Draw room numbers
   drawRoomNumbers(ctx);
@@ -412,7 +414,7 @@ const drawCorridor = (ctx, room, doorway) => {
     drawSecretDoor(ctx, room, doorway);
   } else if (doorwayType === 'corridor') {
     drawCorridorWalls(ctx, room, doorway);
-  } else if (doorwayType === 'stairs' && room.id > doorway.connectedRoomId) {
+  } else if (doorwayType === 'stairs' && room.id < doorway.connectedRoomId) {
     drawStairs(ctx, room, doorway);
   } else if (doorwayType === 'merged') {
     // Do nothing for merged connections

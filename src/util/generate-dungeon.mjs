@@ -417,6 +417,15 @@ export function generateDungeon() {
           }
         });
       });
+      room.sections.forEach((section) => {
+        if (section.doorways) {
+          section.doorways.forEach((doorway) => {
+            if (doorway.type !== 'merged') {
+              room.doorways.push(doorway);
+            }
+          });
+        }
+      });
     }
   });
 

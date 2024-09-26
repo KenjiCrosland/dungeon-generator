@@ -1,297 +1,209 @@
-// dungeon-details.mjs
+// dungeonProcessor.mjs
 
-// Class to represent each room node in the graph
-class RoomNode {
-  constructor(room) {
-    this.id = room.id;
-    this.room = room; // Original room data
-    this.neighbors = []; // Adjacent rooms
-    this.distanceFromEntrance = Infinity; // Initialize with Infinity
-    this.visited = false;
-    // Additional metadata
-    this.roomType = null; // e.g., 'boss', 'minion', 'goal', etc.
-    this.containsKey = false;
-    this.faction = null;
-    this.isLeaf = false;
-    this.isPickable = false; // For locked doors with no further connections
-  }
-}
-
-// Function to build the dungeon graph
-function buildDungeonGraph(rooms) {
+/**
+ * Processes the dungeon rooms array, adding keys or clues for locked and secret doors,
+ * and returns the flattened array with added metadata.
+ *
+ * @param {Array} rooms - The array of dungeon rooms.
+ * @returns {Array} - The processed and flattened array of dungeon rooms.
+ */
+export function addDungeonDetails(rooms) {
+  // Create a map of rooms by their IDs for easy access
   const roomMap = new Map();
-
-  // Create a RoomNode for each room
   rooms.forEach((room) => {
-    roomMap.set(room.id, new RoomNode(room));
+    roomMap.set(room.id, room);
   });
 
-  // Establish connections between rooms
-  rooms.forEach((room) => {
-    const currentNode = roomMap.get(room.id);
+  // Build the dungeon tree
+  const root = buildTree(roomMap, 1);
 
-    // Get all doorways for the room, including those in sections if it's a merged room
-    let doorways = [];
-    if (room.type === 'merged' && room.sections) {
-      room.sections.forEach((section) => {
-        if (section.doorways) {
-          doorways = doorways.concat(section.doorways);
-        }
-      });
-    } else {
-      doorways = room.doorways || [];
-    }
+  // Add keys or clues based on the rules
+  addKeysAndClues(root, roomMap);
 
-    doorways.forEach((doorway) => {
-      if (doorway.connectedRoomId !== undefined) {
-        const neighborNode = roomMap.get(doorway.connectedRoomId);
-        if (neighborNode) {
-          currentNode.neighbors.push(neighborNode);
-        }
-      }
-    });
-  });
+  // Flatten the tree back into an array
+  const flattenedRooms = [];
+  flattenTree(root, flattenedRooms);
 
-  return roomMap;
+  return flattenedRooms;
 }
 
-// Function to calculate distances from the entrance using BFS
-function calculateDistances(roomMap, entranceId = 1) {
-  const entranceNode = roomMap.get(entranceId);
-  entranceNode.distanceFromEntrance = 0;
-  entranceNode.visited = true;
+/**
+ * Recursively builds the dungeon tree starting from the given room ID.
+ *
+ * @param {Map} roomMap - Map of room IDs to room objects.
+ * @param {number} roomId - The current room ID.
+ * @param {Set} visited - Set of visited room IDs to prevent cycles.
+ * @returns {Object} - The tree node representing the room.
+ */
+function buildTree(roomMap, roomId, visited = new Set()) {
+  const room = roomMap.get(roomId);
+  if (!room || visited.has(roomId)) return null;
 
-  const queue = [entranceNode];
+  visited.add(roomId);
 
-  while (queue.length > 0) {
-    const currentNode = queue.shift();
-    const currentDistance = currentNode.distanceFromEntrance;
+  // Clone the room to avoid mutating the original data
+  const node = { ...room, children: [] };
 
-    currentNode.neighbors.forEach((neighbor) => {
-      if (!neighbor.visited) {
-        neighbor.visited = true;
-        neighbor.distanceFromEntrance = currentDistance + 1;
-        queue.push(neighbor);
-      }
-    });
-  }
-}
-
-// The rest of the code remains the same...
-
-// Function to identify leaf nodes (rooms with only one connection excluding entrance)
-function identifyLeafNodes(roomMap) {
-  roomMap.forEach((node) => {
-    // Exclude the entrance node
-    if (node.id !== 1 && node.neighbors.length === 1) {
-      node.isLeaf = true;
-    }
-  });
-}
-
-// Function to assign the boss room
-function assignBossRoom(roomMap) {
-  // Filter out leaf nodes
-  const leafNodes = Array.from(roomMap.values()).filter((node) => node.isLeaf);
-
-  // Sort leaf nodes by distance from entrance (descending)
-  leafNodes.sort((a, b) => b.distanceFromEntrance - a.distanceFromEntrance);
-
-  const bossRoomNode = leafNodes[0];
-  bossRoomNode.roomType = 'boss';
-
-  return bossRoomNode;
-}
-
-// Function to assign minion rooms adjacent to the boss room
-function assignMinionRooms(bossRoomNode) {
-  bossRoomNode.neighbors.forEach((neighbor) => {
-    if (neighbor.roomType === null && neighbor.id !== 1) {
-      neighbor.roomType = 'minion';
-    }
-  });
-}
-
-// Function to assign the goal room
-function assignGoalRoom(bossRoomNode) {
-  const goalRoomNode = bossRoomNode.neighbors.find(
-    (neighbor) => neighbor.isLeaf && neighbor.roomType === null,
-  );
-
-  if (goalRoomNode) {
-    goalRoomNode.roomType = 'goal';
-    return goalRoomNode;
-  } else {
-    // If no suitable goal room, the boss room also serves as the goal room
-    bossRoomNode.roomType = 'boss-and-goal';
-    return bossRoomNode;
-  }
-}
-
-// Function to assign a secondary faction encounter room
-function assignSecondaryFaction(roomMap) {
-  const totalRooms = roomMap.size;
-
-  if (totalRooms > 10) {
-    const unassignedRooms = Array.from(roomMap.values()).filter(
-      (node) => node.roomType === null && node.id !== 1,
-    );
-
-    if (unassignedRooms.length > 0) {
-      // Choose a room far from the entrance but not the boss room
-      unassignedRooms.sort(
-        (a, b) => b.distanceFromEntrance - a.distanceFromEntrance,
-      );
-      const secondaryFactionRoom = unassignedRooms[0];
-      secondaryFactionRoom.roomType = 'secondary-faction';
-      return secondaryFactionRoom;
-    }
-  }
-
-  return null;
-}
-
-// Function to find the shortest path between two nodes using BFS
-function findShortestPath(roomMap, startId, endId) {
-  const startNode = roomMap.get(startId);
-  const endNode = roomMap.get(endId);
-
-  const visited = new Set();
-  const queue = [[startNode]];
-  visited.add(startNode);
-
-  while (queue.length > 0) {
-    const path = queue.shift();
-    const currentNode = path[path.length - 1];
-
-    if (currentNode === endNode) {
-      return path;
-    }
-
-    currentNode.neighbors.forEach((neighbor) => {
-      if (!visited.has(neighbor)) {
-        visited.add(neighbor);
-        const newPath = [...path, neighbor];
-        queue.push(newPath);
-      }
-    });
-  }
-
-  return null; // No path found
-}
-
-// Function to assign a setback room along the path to the boss room
-function assignSetbackRoom(roomMap, bossRoomNode) {
-  const pathToBoss = findShortestPath(roomMap, 1, bossRoomNode.id);
-
-  if (pathToBoss) {
-    // Exclude the entrance and the boss room
-    const candidateRooms = pathToBoss.filter(
-      (node) =>
-        node.id !== 1 && node.id !== bossRoomNode.id && node.roomType === null,
-    );
-
-    if (candidateRooms.length > 0) {
-      const setbackRoom = candidateRooms[Math.floor(candidateRooms.length / 2)]; // Pick a room in the middle
-      setbackRoom.roomType = 'setback';
-      return setbackRoom;
-    }
-  }
-
-  return null;
-}
-
-// Function to place keys in rooms for locked doors leading to significant areas
-function placeKeys(roomMap) {
-  roomMap.forEach((node) => {
-    const doorways = getAllDoorways(node.room);
-    doorways.forEach((doorway) => {
-      if (doorway.type === 'locked-door') {
-        const connectedNode = roomMap.get(doorway.connectedRoomId);
-
-        if (
-          connectedNode &&
-          (connectedNode.roomType === 'boss' ||
-            connectedNode.roomType === 'goal' ||
-            connectedNode.roomType === 'boss-and-goal')
-        ) {
-          // Find a room to place the key
-          const candidateRooms = Array.from(roomMap.values()).filter(
-            (n) => n.roomType === null && n.id !== node.id,
+  // Handle merged rooms
+  if (room.type === 'merged' && room.sections) {
+    node.sections = room.sections.map((section) => {
+      const sectionNode = { ...section, children: [] };
+      section.doorways.forEach((doorway) => {
+        if (!doorway.fromParent) {
+          const childNode = buildTree(
+            roomMap,
+            doorway.connectedRoomId,
+            visited,
           );
-
-          if (candidateRooms.length > 0) {
-            // Choose a room farthest from the locked door
-            candidateRooms.sort(
-              (a, b) => b.distanceFromEntrance - a.distanceFromEntrance,
-            );
-            const keyRoom = candidateRooms[0];
-            keyRoom.containsKey = true;
+          if (childNode) {
+            sectionNode.children.push(childNode);
           }
         }
-      }
+      });
+      return sectionNode;
     });
-  });
-}
+  }
 
-// Function to handle locked leaf rooms
-function handleLockedLeafRooms(roomMap) {
-  roomMap.forEach((node) => {
-    if (node.isLeaf && node.roomType === null) {
-      const doorways = getAllDoorways(node.room);
-      const hasLockedDoor = doorways.some(
-        (doorway) => doorway.type === 'locked-door',
-      );
-
-      if (hasLockedDoor) {
-        // Decide whether to place the key in the same room or make it pickable
-        // For simplicity, we'll make it pickable
-        node.room.isPickable = true;
+  // Process doorways
+  room.doorways.forEach((doorway) => {
+    if (!doorway.fromParent) {
+      const childNode = buildTree(roomMap, doorway.connectedRoomId, visited);
+      if (childNode) {
+        node.children.push(childNode);
       }
     }
   });
+
+  return node;
 }
 
-// Helper function to get all doorways of a room, including merged sections
-function getAllDoorways(room) {
-  let doorways = [];
-  if (room.type === 'merged' && room.sections) {
-    room.sections.forEach((section) => {
-      if (section.doorways) {
-        doorways = doorways.concat(section.doorways);
+/**
+ * Adds keys or clues to the tree nodes based on the provided rules.
+ *
+ * @param {Object} node - The current tree node.
+ * @param {Map} roomMap - Map of room IDs to room objects.
+ * @param {Set} processed - Set of processed room IDs to prevent reprocessing.
+ */
+function addKeysAndClues(node, roomMap, processed = new Set()) {
+  if (!node || processed.has(node.id)) return;
+
+  processed.add(node.id);
+
+  node.doorways.forEach((doorway) => {
+    if (doorway.type === 'locked-door' || doorway.type === 'secret') {
+      const behindRooms = getRoomsBehindDoor(
+        doorway.connectedRoomId,
+        node.id,
+        roomMap,
+      );
+
+      if (behindRooms.size === 1) {
+        // Single room behind the door
+        doorway.pickable = true;
+        const connectedRoom = roomMap.get(doorway.connectedRoomId);
+        connectedRoom.hasKey = true;
+      } else {
+        // Multiple rooms behind the door
+        doorway.requiresKey = true;
+        const keyRoom = findKeyRoom(node, 2, roomMap, new Set());
+        if (keyRoom) {
+          keyRoom.hasKey = true;
+        }
       }
-    });
-  } else {
-    doorways = room.doorways || [];
-  }
-  return doorways;
-}
-
-// Main function to create dungeon details
-export function createDungeonDetails(rooms) {
-  const roomMap = buildDungeonGraph(rooms);
-  calculateDistances(roomMap);
-  identifyLeafNodes(roomMap);
-
-  const bossRoomNode = assignBossRoom(roomMap);
-  assignMinionRooms(bossRoomNode);
-  assignGoalRoom(bossRoomNode);
-  assignSecondaryFaction(roomMap);
-  assignSetbackRoom(roomMap, bossRoomNode);
-  placeKeys(roomMap);
-  handleLockedLeafRooms(roomMap);
-
-  // Update room data with metadata
-  const updatedRooms = [];
-  roomMap.forEach((node) => {
-    node.room.roomType = node.roomType;
-    node.room.containsKey = node.containsKey;
-    node.room.faction = node.faction;
-    node.room.distanceFromEntrance = node.distanceFromEntrance;
-    node.room.isLeaf = node.isLeaf;
-    node.room.isPickable = node.room.isPickable || false;
-    updatedRooms.push(node.room);
+    }
   });
 
-  return updatedRooms;
+  // Recursively process children
+  node.children.forEach((child) => {
+    addKeysAndClues(child, roomMap, processed);
+  });
+
+  // Handle merged room sections
+  if (node.sections) {
+    node.sections.forEach((section) => {
+      section.doorways.forEach((doorway) => {
+        if (!doorway.fromParent) {
+          addKeysAndClues(section, roomMap, processed);
+        }
+      });
+    });
+  }
+}
+
+/**
+ * Gets all rooms behind a locked or secret door.
+ *
+ * @param {number} startId - Starting room ID.
+ * @param {number} excludeId - Room ID to exclude (the parent room).
+ * @param {Map} roomMap - Map of room IDs to room objects.
+ * @param {Set} visited - Set of visited room IDs.
+ * @returns {Set} - Set of room IDs behind the door.
+ */
+function getRoomsBehindDoor(startId, excludeId, roomMap, visited = new Set()) {
+  if (visited.has(startId)) return visited;
+  visited.add(startId);
+
+  const room = roomMap.get(startId);
+  if (!room) return visited;
+
+  room.doorways.forEach((doorway) => {
+    if (doorway.connectedRoomId !== excludeId) {
+      getRoomsBehindDoor(doorway.connectedRoomId, excludeId, roomMap, visited);
+    }
+  });
+
+  return visited;
+}
+
+/**
+ * Finds a suitable room to place a key, at least minDepth rooms away.
+ *
+ * @param {Object} node - The current tree node.
+ * @param {number} minDepth - Minimum depth required.
+ * @param {Map} roomMap - Map of room IDs to room objects.
+ * @param {Set} visited - Set of visited room IDs.
+ * @param {number} depth - Current depth in the tree.
+ * @returns {Object|null} - The room node where the key can be placed.
+ */
+function findKeyRoom(node, minDepth, roomMap, visited, depth = 0) {
+  if (visited.has(node.id)) return null;
+  visited.add(node.id);
+
+  if (depth >= minDepth && node.children.length === 0) {
+    // Leaf node at required depth
+    return node;
+  }
+
+  for (const child of node.children) {
+    const result = findKeyRoom(child, minDepth, roomMap, visited, depth + 1);
+    if (result) return result;
+  }
+
+  return null;
+}
+
+/**
+ * Flattens the tree back into an array.
+ *
+ * @param {Object} node - The current tree node.
+ * @param {Array} result - The array to collect the rooms.
+ * @param {Set} visited - Set of visited room IDs.
+ */
+function flattenTree(node, result, visited = new Set()) {
+  if (!node || visited.has(node.id)) return;
+
+  visited.add(node.id);
+  result.push(node);
+
+  // Flatten merged sections if any
+  if (node.sections) {
+    node.sections.forEach((section) => {
+      flattenTree(section, result, visited);
+    });
+  }
+
+  // Flatten child nodes
+  node.children.forEach((child) => {
+    flattenTree(child, result, visited);
+  });
 }
