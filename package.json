@@ -9,10 +9,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@rei/cdr-tokens": "^12.3.0",
+    "@rei/cedar": "^15.2.0",
     "vue": "^3.4.37"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.1.2",
+    "sass-embedded": "^1.79.4",
     "vite": "^5.4.1"
   }
 }

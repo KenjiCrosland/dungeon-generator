@@ -10,7 +10,12 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+data-training
 *.local
+npc-generator.txt
+.env
+.env.local
+launch.json
 
 # Editor directories and files
 .vscode/*
