@@ -15,7 +15,7 @@ const props = defineProps({
   },
   tileSize: {
     type: Number,
-    default: 20, // Adjust tile size as needed
+    default: 16, // Adjust tile size as needed
   },
 });
 

@@ -23,6 +23,7 @@ export function dungeonOverviewPrompt(
     name: '${place_name}',
     overview: 'A brief overview of the dungeon, with a brief description of its current state',
     relation_to_larger_setting: 'How does the dungeon relate to the larger setting? What role does it play in the larger setting? How is it situated geographically in relation to the larger setting? Provide a name for the larger setting if possible',
+    finding_the_dungeon: 'How is the dungeon accessed? Is it deep inside dangerous geographical features, hidden in plain sight, or accessible only through a portal or ritual? What are the dangers and obstacles that must be overcome to reach the dungeon?',
     history: 'A very brief history of the dungeon, including its founding/creation and most significant recent events',
     title: 'A descriptive title like: The Haunted Ruins of Blackwood. The title MUST include the setting name',
     dominant_power: 'What entity has dominant power over this dungeon? This entity could be monstrous, fae, demonic, undead, angelic, abyssal, a mindless but powerful beast, etc. Be creative, unique, and specific and match the entity or group to the setting',
@@ -40,7 +41,43 @@ export function dungeonOverviewPrompt(
         name: 'NPC Name',
         description: 'A brief description of the NPC's role and personality'
       }
-      // Repeat the above structure for each NPC
+      // Repeat the above structure for each NPC. Remember, NPCs are individuals and not organizations or groups
     ]
   }`;
+}
+
+export function validateDungeonOverview(jsonString) {
+  try {
+    const data = JSON.parse(jsonString);
+    // Check for required keys
+    const requiredKeys = [
+      'name',
+      'overview',
+      'relation_to_larger_setting',
+      'finding_the_dungeon',
+      'history',
+      'title',
+      'dominant_power',
+      'dominant_power_goals',
+      'dominant_power_minions',
+      'dominant_power_event',
+      'recent_event_consequences',
+      'secondary_power',
+      'secondary_power_event',
+      'main_problem',
+      'potential_solutions',
+      'conclusion',
+      'npc_list',
+    ];
+
+    for (const key of requiredKeys) {
+      if (!(key in data)) {
+        return false;
+      }
+    }
+
+    return true;
+  } catch (e) {
+    return false;
+  }
 }

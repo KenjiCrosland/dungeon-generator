@@ -1,102 +1,206 @@
 <template>
-  <!-- Main Container -->
-  <div class="dungeon-container">
-    <!-- Main Content Area (Wider Column) -->
-    <div class="main-content">
-      <!-- Dungeon Map -->
-      <DungeonMap :rooms="rooms" @roomClicked="handleRoomClick" />
+  <div class="app-container">
+    <cdr-button modifier="secondary" class="sidebar-toggle" @click="isSidebarVisible = !isSidebarVisible"
+      v-show="windowWidth <= 1020">
+      <template #icon-left>
+        <icon-navigation-menu inherit-color />
+      </template>
+      {{ isSidebarVisible ? 'Hide Sidebar' : 'Show Sidebar' }}
+    </cdr-button>
+    <!-- Overlay to close sidebar on click -->
+    <div class="overlay" v-show="isSidebarVisible && windowWidth <= 1020" @click="isSidebarVisible = false"></div>
+    <div class="sidebar" :style="sidebarStyle">
+      <ul class="saved-dungeons">
+        <li v-for="(dungeon, index) in dungeons" :key="dungeon.id" :class="{ active: currentDungeonId === dungeon.id }">
+          <button class="dungeon-button" @click="selectDungeon(dungeon.id)">
+            <span>{{ dungeon.dungeonOverview.title }}</span>
+          </button>
+        </li>
+        <li>
+          <button class="dungeon-button" @click="createNewDungeon" :class="{ active: currentDungeonId === null }">
+            + New Dungeon
+          </button>
+        </li>
+      </ul>
+    </div>
 
-      <!-- Dungeon Overview Form -->
-      <div class="dungeon-overview-form">
+    <!-- Main Content -->
+    <div class="main-content">
+      <div v-if="!currentDungeon && !loadingOverview" class="dungeon-overview-form">
         <h3>Create Dungeon Overview</h3>
         <form @submit.prevent="generateDungeonOverview">
-          <cdr-input id="adjective" v-model="form.adjective" label="Adjective" :required="true"
-            background="secondary"></cdr-input>
-          <cdr-input id="setting_type" v-model="form.setting_type" label="Setting Type" :required="true"
-            background="secondary"></cdr-input>
-          <cdr-input id="place_name" v-model="form.place_name" label="Place Name" :required="true"
-            background="secondary"></cdr-input>
-          <cdr-input id="place_lore" v-model="form.place_lore" label="Place Lore (Optional)" tag="textarea" :rows="5"
-            background="secondary"></cdr-input>
+          <cdr-form-group>
+            <div class="generator-fields">
+              <cdr-input class="generator-field-input" id="adjective" v-model="form.adjective" background="secondary"
+                label="Adjective">
+                <template #helper-text-bottom>
+                  Examples: "Forgotten", "Decaying", "Sunken"
+                </template>
+              </cdr-input>
+              <cdr-input class="generator-field-input" id="setting_type" v-model="form.setting_type"
+                background="secondary" label="Type of Dungeon">
+                <template #helper-text-bottom>
+                  Examples: "Temple", "Fortress", "Outpost", "Catacombs"
+                </template>
+              </cdr-input>
+              <p style="text-align: center;">Of</p>
+              <cdr-input class="generator-field-input" id="place_name" v-model="form.place_name" background="secondary"
+                label="Place Name">
+                <template #helper-text-bottom>
+                  Examples: "Forgotten Sun", "Grimhold", "Farwatch Outpost", "The Undercity"
+                </template>
+              </cdr-input>
+            </div>
+            <div class="lore-field-input">
+              <cdr-input :rows="5" tag="textarea" v-model="form.place_lore" background="secondary" label="Dungeon Lore"
+                placeholder="Enter any additional details about the dungeon">
+                <template #helper-text-bottom>
+                  Write any details about your dungeon that you want to include. Need help coming up
+                  with lore for your setting? Use the
+                  <cdr-link href="https://cros.land/ai-powered-lore-and-timeline-generator/">Lore Generator</cdr-link>
+                  and paste in the generated summary!
+                </template>
+              </cdr-input>
+            </div>
+          </cdr-form-group>
           <cdr-button type="submit" modifier="dark">Generate Overview</cdr-button>
         </form>
       </div>
 
-      <!-- Display Dungeon Overview -->
-      <div v-if="dungeonOverview" class="dungeon-overview">
-        <h2>{{ dungeonOverview.title }}</h2>
-        <cdr-text>{{ dungeonOverview.name }}</cdr-text>
-        <cdr-text>{{ dungeonOverview.overview }}</cdr-text>
-        <cdr-text>{{ dungeonOverview.relation_to_larger_setting }}</cdr-text>
-        <cdr-text>{{ dungeonOverview.history }}</cdr-text>
-        <cdr-text>{{ dungeonOverview.dominant_power }} {{ dungeonOverview.dominant_power_goals }} {{
-          dungeonOverview.dominant_power_minions
-          }}</cdr-text>
-        <cdr-text> {{ dungeonOverview.dominant_power_event }} {{ dungeonOverview.recent_event_consequences }}</cdr-text>
-        <cdr-text>{{ dungeonOverview.secondary_power }} {{ dungeonOverview.secondary_power_event }}</cdr-text>
-        <cdr-text>{{ dungeonOverview.main_problem }} {{ dungeonOverview.potential_solutions }}</cdr-text>
-        <cdr-text>{{ dungeonOverview.conclusion }}</cdr-text>
-
-        <!-- NPC List -->
-        <h3>NPC List:</h3>
-        <cdr-accordion-group>
-          <cdr-accordion v-for="npc in dungeonOverview.npc_list" :key="npc.name" :id="npc.name">
-            <template #label>
-              {{ npc.name }}
-            </template>
-            <div>
-              <cdr-text><strong>Description:</strong> {{ npc.description }}</cdr-text>
-            </div>
-          </cdr-accordion>
-        </cdr-accordion-group>
-      </div>
-    </div>
-
-    <!-- Sidebar (Smaller Column) -->
-    <div class="sidebar">
-      <!-- Selected Room Description -->
-      <div v-if="selectedRoomDescription" class="selected-room-description">
-        <h2>Room {{ selectedRoomId }} Description</h2>
-        <cdr-text>{{ selectedRoomDescription }}</cdr-text>
-      </div>
-
-      <!-- All Room Descriptions -->
-      <div class="all-room-descriptions">
-        <h2>All Room Descriptions</h2>
-        <cdr-accordion-group>
-          <cdr-accordion v-for="(description, id) in roomDescriptions" :key="id" :id="'room-' + id" level="2">
-            <template #label>
-              Room {{ id }}
-            </template>
-            <div>
-              <cdr-text>{{ description }}</cdr-text>
-            </div>
-          </cdr-accordion>
-        </cdr-accordion-group>
-      </div>
+      <Tabs v-if="currentDungeon || loadingOverview" :activeIndex="activeTabIndex">
+        <TabPanel label="Overview">
+          <OverviewSkeleton v-if="loadingOverview" />
+          <div v-if="currentDungeon && currentDungeon.dungeonOverview" class="dungeon-overview">
+            <h2>{{ currentDungeon.dungeonOverview.title }}</h2>
+            <cdr-text>{{ currentDungeon.dungeonOverview.name }}</cdr-text>
+            <cdr-text>{{ currentDungeon.dungeonOverview.overview }}</cdr-text>
+            <cdr-text>
+              {{ currentDungeon.dungeonOverview.relation_to_larger_setting }}
+              {{ currentDungeon.dungeonOverview.finding_the_dungeon }}
+            </cdr-text>
+            <cdr-text>{{ currentDungeon.dungeonOverview.history }}</cdr-text>
+            <cdr-text>
+              {{ currentDungeon.dungeonOverview.dominant_power }}
+              {{ currentDungeon.dungeonOverview.dominant_power_goals }}
+              {{ currentDungeon.dungeonOverview.dominant_power_minions }}
+            </cdr-text>
+            <cdr-text>
+              {{ currentDungeon.dungeonOverview.dominant_power_event }}
+              {{ currentDungeon.dungeonOverview.recent_event_consequences }}
+            </cdr-text>
+            <cdr-text>
+              {{ currentDungeon.dungeonOverview.secondary_power }}
+              {{ currentDungeon.dungeonOverview.secondary_power_event }}
+            </cdr-text>
+            <cdr-text>
+              {{ currentDungeon.dungeonOverview.main_problem }}
+              {{ currentDungeon.dungeonOverview.potential_solutions }}
+            </cdr-text>
+            <cdr-text>{{ currentDungeon.dungeonOverview.conclusion }}</cdr-text>
+          </div>
+        </TabPanel>
+        <TabPanel label="Map">
+          <div v-if="currentDungeon && selectedRoomDescription" class="selected-room-description">
+            <h2>Room {{ selectedRoomId }} Description</h2>
+            <cdr-text>{{ selectedRoomDescription }}</cdr-text>
+          </div>
+          <div v-if="currentDungeon && currentDungeon.rooms" class="dungeon-map-container">
+            <DungeonMap :rooms="currentDungeon.rooms" @roomClicked="handleRoomClick" />
+          </div>
+          <cdr-text v-if="!currentDungeon || !currentDungeon.rooms">
+            Generate a Map for your dungeon
+          </cdr-text>
+          <cdr-button @click="generateMap" modifier="dark">
+            {{ currentDungeon && currentDungeon.rooms ? 'Re-generate Map' : 'Generate Map' }}
+          </cdr-button>
+        </TabPanel>
+        <TabPanel label="NPCs">
+          <h3>NPC List:</h3>
+          <cdr-accordion-group v-if="currentDungeon && currentDungeon.dungeonOverview">
+            <cdr-accordion v-for="npc in currentDungeon.dungeonOverview.npc_list" :key="npc.name" :id="npc.name"
+              level="4" @accordion-toggle="npc.open = !npc.open" :opened="npc.open">
+              <template #label>
+                {{ npc.name }}
+              </template>
+              <div>
+                <cdr-text><strong>Description:</strong> {{ npc.description }}</cdr-text>
+              </div>
+            </cdr-accordion>
+          </cdr-accordion-group>
+        </TabPanel>
+      </Tabs>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import DungeonMap from './DungeonMap.vue';
 import { createRoomDescriptions } from '../util/create-room-descriptions.mjs';
 import { generateDungeon } from '../util/generate-dungeon.mjs';
 import { addDungeonDetails } from '../util/dungeon-details.mjs';
 import { generateGptResponse } from '../util/open-ai.mjs';
-import { dungeonOverviewPrompt } from '../prompts/dungeon-overview.mjs';
+import { dungeonOverviewPrompt, validateDungeonOverview } from '../prompts/dungeon-overview.mjs';
+import Tabs from './tabs/Tabs.vue';
+import TabPanel from './tabs/TabPanel.vue';
+import OverviewSkeleton from './skeletons/OverviewSkeleton.vue';
 import {
   CdrInput,
   CdrButton,
+  CdrLink,
   CdrAccordionGroup,
   CdrAccordion,
-  CdrText
+  CdrText,
+  CdrFormGroup,
+  IconNavigationMenu
 } from '@rei/cedar';
+const windowWidth = ref(window.innerWidth);
+const isSidebarVisible = ref(false); // Start hidden on mobile
 
-// Reactive properties for the selected room
-const selectedRoomId = ref(null);
-const selectedRoomDescription = ref('');
+const sidebarStyle = computed(() => {
+  if (windowWidth.value <= 1020) {
+    return {
+      position: 'fixed',
+      transform: isSidebarVisible.value ? 'translateX(0)' : 'translateX(-100%)',
+      width: '70%', // Adjust width for mobile
+      maxWidth: '400px'
+    };
+  } else {
+    return {
+      width: '400px',
+      position: 'static',
+      transform: 'none'
+    };
+  }
+});
+
+const updateWindowWidth = () => {
+  windowWidth.value = window.innerWidth;
+};
+// Update based on viewport size immediately and on resize
+const updateVisibility = () => {
+  if (window.innerWidth > 768) {
+    isSidebarVisible.value = true;  // Always show on desktop
+  } else {
+    isSidebarVisible.value = false;  // Manage with toggle button on mobile
+  }
+};
+
+onMounted(() => {
+  loadDungeons();
+  window.addEventListener('resize', updateWindowWidth);
+});
+
+const loadingOverview = ref(false);
+const activeTabIndex = ref(0);
+
+// Reactive properties
+const dungeons = ref([]);
+const currentDungeonId = ref(null);
+
+const currentDungeon = computed(() => {
+  return dungeons.value.find(dungeon => dungeon.id === currentDungeonId.value);
+});
 
 // Reactive form data
 const form = reactive({
@@ -106,27 +210,35 @@ const form = reactive({
   place_lore: '',
 });
 
-// Reactive property for the dungeon overview
-const dungeonOverview = ref(null);
-
 // Function to handle room click
+const selectedRoomId = ref(null);
+const selectedRoomDescription = ref('');
+
 const handleRoomClick = (roomId) => {
   selectedRoomId.value = roomId;
-  selectedRoomDescription.value = roomDescriptions[roomId];
+  if (currentDungeon.value && currentDungeon.value.roomDescriptions) {
+    selectedRoomDescription.value = currentDungeon.value.roomDescriptions[roomId];
+  }
 };
 
-// Generate the dungeon and room descriptions
-let dungeonRoomArray = generateDungeon();
-addDungeonDetails(dungeonRoomArray);
-let roomDescriptions = createRoomDescriptions(dungeonRoomArray);
+// Save Dungeons to Local Storage
+const saveDungeons = () => {
+  localStorage.setItem('dungeons', JSON.stringify(dungeons.value));
+};
 
-// Reactive property for rooms
-const rooms = ref(dungeonRoomArray);
+// Load Dungeons from Local Storage
+const loadDungeons = () => {
+  const savedDungeons = localStorage.getItem('dungeons');
+  if (savedDungeons) {
+    dungeons.value = JSON.parse(savedDungeons);
+    currentDungeonId.value = dungeons.value.length ? dungeons.value[0].id : null;
+  }
+};
 
-// Function to generate dungeon overview
+// Generate Dungeon Overview
 const generateDungeonOverview = async () => {
   try {
-    // Generate the prompt using the form data
+    loadingOverview.value = true;
     const prompt = dungeonOverviewPrompt(
       form.adjective,
       form.setting_type,
@@ -134,159 +246,269 @@ const generateDungeonOverview = async () => {
       form.place_lore,
     );
 
-    // Display a loading indicator
-    dungeonOverview.value = { title: 'Generating dungeon overview...' };
-
-    // Call the GPT function to generate the overview
     const response = await generateGptResponse(prompt, validateDungeonOverview);
+    const overview = JSON.parse(response);
 
-    // Parse the JSON response
-    dungeonOverview.value = JSON.parse(response);
-  } catch (error) {
-    console.error('Error generating dungeon overview:', error);
-    dungeonOverview.value = {
-      title: 'Error',
-      overview: 'Failed to generate dungeon overview. Please try again.',
+    // Create a new dungeon object
+    const newDungeon = {
+      id: Date.now(), // Simple unique ID using timestamp
+      dungeonOverview: overview,
+      rooms: null,
+      roomDescriptions: null,
     };
+
+    // Add the new dungeon to the dungeons array
+    dungeons.value.push(newDungeon);
+    currentDungeonId.value = newDungeon.id;
+
+    loadingOverview.value = false;
+    saveDungeons();
+  } catch (error) {
+    loadingOverview.value = false;
+    console.error('Error generating dungeon overview:', error);
   }
 };
 
-// Function to validate the JSON keys in the GPT response
-const validateDungeonOverview = (jsonString) => {
-  try {
-    const data = JSON.parse(jsonString);
-    // Check for required keys
-    const requiredKeys = [
-      'name',
-      'overview',
-      'relation_to_larger_setting',
-      'history',
-      'title',
-      'dominant_power',
-      'dominant_power_goals',
-      'dominant_power_minions',
-      'dominant_power_event',
-      'recent_event_consequences',
-      'secondary_power',
-      'secondary_power_event',
-      'main_problem',
-      'potential_solutions',
-      'conclusion',
-      'npc_list',
-    ];
-
-    for (const key of requiredKeys) {
-      if (!(key in data)) {
-        return false;
-      }
-    }
-
-    return true;
-  } catch (e) {
-    return false;
+// Generate Map
+const generateMap = () => {
+  if (!currentDungeon.value) {
+    console.error('No dungeon selected');
+    return;
   }
+
+  let dungeonRoomArray = generateDungeon();
+  addDungeonDetails(dungeonRoomArray);
+
+  // Generate room descriptions
+  const roomDescriptions = createRoomDescriptions(dungeonRoomArray);
+
+  // Assign descriptions to rooms
+  dungeonRoomArray.forEach((room, index) => {
+    room.description = roomDescriptions[index];
+  });
+
+  // Update the current dungeon
+  currentDungeon.value.rooms = dungeonRoomArray;
+  currentDungeon.value.roomDescriptions = roomDescriptions;
+
+  saveDungeons();
+};
+
+// Select Dungeon
+const selectDungeon = (dungeonId) => {
+  currentDungeonId.value = dungeonId;
+};
+
+// Delete Dungeon
+const deleteDungeon = (dungeonId) => {
+  const index = dungeons.value.findIndex(dungeon => dungeon.id === dungeonId);
+  if (index !== -1) {
+    dungeons.value.splice(index, 1);
+    // If the deleted dungeon was the current one, reset selection
+    if (currentDungeonId.value === dungeonId) {
+      currentDungeonId.value = dungeons.value.length ? dungeons.value[0].id : null;
+    }
+    saveDungeons();
+  }
+};
+
+// Create New Dungeon (Reset Form)
+const createNewDungeon = () => {
+  form.adjective = '';
+  form.setting_type = '';
+  form.place_name = '';
+  form.place_lore = '';
+  currentDungeonId.value = null;
 };
 </script>
 
 <style scoped lang="scss">
 @import '@rei/cdr-tokens/dist/rei-dot-com/scss/cdr-tokens.scss';
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
 
-cdr-text {
-  @include cdr-text-body-300;
-  color: $cdr-color-text-primary;
-  text-align: left;
-}
-
-/* Container for the dungeon map and descriptions */
-.dungeon-container {
+.app-container {
   display: flex;
-  flex-direction: row;
-  align-items: flex-start;
 }
 
-/* Main Content Area (Wider Column) */
-.main-content {
-  flex: 2;
-  /* Adjust the flex value to control the width */
-  margin-right: 20px;
-}
-
-/* Sidebar (Smaller Column) */
+/* Sidebar Styles */
 .sidebar {
-  flex: 1;
-  max-width: 350px;
+  width: 250px;
+  background-color: #f4f4f4;
+  padding: 1rem;
+  height: 100vh;
   overflow-y: auto;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 3;
+
+  .saved-dungeons {
+    list-style: none;
+    padding: 0;
+
+    li {
+      margin-bottom: 10px;
+
+      &.active .dungeon-button {
+        background-color: #e0e0e0;
+        font-weight: bold;
+      }
+
+      .dungeon-button {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 20px;
+        font-size: 1.5rem;
+        text-align: left;
+        background-color: #e0e0e0;
+        border: none;
+        color: inherit;
+        cursor: pointer;
+        border-left: 5px solid transparent;
+        transition: background-color 0.3s, border-left-color 0.3s;
+
+        &:hover {
+          background-color: #f0f0f0;
+        }
+
+        &:focus {
+          outline: none;
+          border-left-color: #007BFF;
+        }
+
+        &.active {
+          background-color: #ffffff;
+          border-left-color: #007BFF;
+          font-weight: bold;
+        }
+      }
+    }
+  }
+
+  .new-dungeon-button {
+    width: 100%;
+    margin-top: 1rem;
+  }
 }
 
-form {
-  margin-bottom: 20px;
-  display: flex;
-  flex-direction: column;
-
+/* Overlay for mobile sidebar */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 2;
 }
 
-/* Styles for the dungeon overview form */
-.dungeon-overview-form {
-  margin-top: 20px;
+/* Sidebar Toggle Button */
+.sidebar-toggle {
+  display: none;
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 1001;
+
+  @media (max-width: 1020px) {
+    display: block;
+  }
 }
 
-.dungeon-overview-form form div {
-  margin-bottom: 10px;
+/* Main Content Styles */
+.main-content {
+  flex: 1;
+  margin-left: 250px;
+  padding: 2rem;
+  max-width: 800px;
+  margin: 3rem auto;
+  box-shadow: 0 4px 6px #0000001a;
+  border-radius: 5px;
+  background-color: #ffffff;
+
+  .dungeon-overview-form {
+    margin-top: 20px;
+
+    h3 {
+      margin-top: 0;
+    }
+
+    .generator-fields {
+      display: flex;
+      gap: 2rem;
+      align-items: center;
+    }
+
+    .lore-field-input {
+      margin-top: 1rem;
+    }
+  }
+
+  .dungeon-overview {
+    @include cdr-text-body-300;
+
+    h2 {
+      margin-top: 0;
+    }
+
+    cdr-text {
+      margin-bottom: 1rem;
+    }
+  }
+
+  .selected-room-description {
+    margin-top: 2rem;
+
+    h2 {
+      margin-bottom: 1rem;
+    }
+  }
 }
 
-/* Styles for the dungeon overview display */
-.dungeon-overview {
-  margin-top: 20px;
-}
+/* Adjust main content when sidebar is hidden */
+@media (max-width: 1020px) {
+  .main-content {
+    margin-left: 0;
+  }
 
-.dungeon-overview p {
-  margin-bottom: 10px;
-}
+  .sidebar {
+    transform: translateX(-250px);
+    transition: transform 0.3s ease;
 
-.dungeon-overview ul {
-  list-style-type: none;
-  padding: 0;
-}
-
-.dungeon-overview ul li {
-  margin-bottom: 15px;
-}
-
-/* Styles for the selected room description */
-.selected-room-description {
-  margin-bottom: 20px;
-}
-
-/* Styles for all room descriptions */
-.all-room-descriptions {
-  margin-top: 20px;
-}
-
-.all-room-descriptions ul {
-  list-style-type: none;
-  padding: 0;
-}
-
-.all-room-descriptions li {
-  margin-bottom: 20px;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 10px;
+    &.visible {
+      transform: translateX(0);
+    }
+  }
 }
 
 /* Responsive design for smaller screens */
 @media (max-width: 768px) {
-  .dungeon-container {
+  .app-container {
     flex-direction: column;
   }
 
   .main-content {
-    margin-right: 0;
-    margin-bottom: 20px;
+    margin: 0 auto;
+    padding: 1rem;
   }
 
   .sidebar {
-    max-width: 100%;
-    width: 100%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    transform: translateX(-250px);
+    transition: transform 0.3s ease;
+    z-index: 1000;
+
+    &.visible {
+      transform: translateX(0);
+    }
+  }
+
+  .overlay {
+    display: block;
   }
 }
 </style>
