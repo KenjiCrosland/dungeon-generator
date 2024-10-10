@@ -100,13 +100,56 @@
           </div>
         </TabPanel>
         <TabPanel label="Map">
+          <!-- Selected Room Description -->
           <div v-if="currentDungeon && selectedRoomDescription" class="selected-room-description">
             <h2>Room {{ selectedRoomId }} Description</h2>
             <cdr-text>{{ selectedRoomDescription }}</cdr-text>
+            <!-- Add button to generate full description -->
+            <cdr-button @click="generateFullRoomDescription" modifier="dark">
+              {{ fullRoomDescription ? 'Re-generate Full Description' : 'Generate Full Description' }}
+            </cdr-button>
           </div>
+
+          <!-- Full Room Description -->
+          <div v-if="fullRoomDescription" class="full-room-description">
+            <h3>{{ fullRoomDescription.name }}</h3>
+            <cdr-text><strong>Description:</strong> {{ fullRoomDescription.description }}</cdr-text>
+            <cdr-text><strong>Contents:</strong> {{ fullRoomDescription.contents }}</cdr-text>
+            <cdr-text><strong>Hazards:</strong> {{ fullRoomDescription.hazards }}</cdr-text>
+
+            <!-- Display clues if present -->
+            <div v-if="fullRoomDescription.clues_for_key_door && fullRoomDescription.clues_for_key_door.length">
+              <h4>Clues for Key Door:</h4>
+              <ul>
+                <li v-for="(clue, index) in fullRoomDescription.clues_for_key_door" :key="index">
+                  {{ clue }}
+                </li>
+              </ul>
+            </div>
+
+            <!-- Display key description if present -->
+            <div v-if="fullRoomDescription.key_description">
+              <h4>Key Description:</h4>
+              <cdr-text>{{ fullRoomDescription.key_description }}</cdr-text>
+            </div>
+
+            <!-- NPCs -->
+            <div v-if="fullRoomDescription.npcs && fullRoomDescription.npcs.length">
+              <h4>NPCs:</h4>
+              <ul>
+                <li v-for="npc in fullRoomDescription.npcs" :key="npc.name">
+                  <strong>{{ npc.name }}:</strong> {{ npc.description }}
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Dungeon Map -->
           <div v-if="currentDungeon && currentDungeon.rooms" class="dungeon-map-container">
             <DungeonMap :rooms="currentDungeon.rooms" @roomClicked="handleRoomClick" />
           </div>
+
+          <!-- Generate Map Button -->
           <cdr-text v-if="!currentDungeon || !currentDungeon.rooms">
             Generate a Map for your dungeon
           </cdr-text>
@@ -140,6 +183,7 @@ import { createRoomDescriptions } from '../util/create-room-descriptions.mjs';
 import { generateDungeon } from '../util/generate-dungeon.mjs';
 import { addDungeonDetails } from '../util/dungeon-details.mjs';
 import { generateGptResponse } from '../util/open-ai.mjs';
+import { dungeonRoomPrompt, validateRoomDescription } from '../prompts/dungeon-room.mjs';
 import { dungeonOverviewPrompt, validateDungeonOverview } from '../prompts/dungeon-overview.mjs';
 import Tabs from './tabs/Tabs.vue';
 import TabPanel from './tabs/TabPanel.vue';
@@ -197,6 +241,7 @@ const activeTabIndex = ref(0);
 // Reactive properties
 const dungeons = ref([]);
 const currentDungeonId = ref(null);
+const fullRoomDescription = ref(null);
 
 const currentDungeon = computed(() => {
   return dungeons.value.find(dungeon => dungeon.id === currentDungeonId.value);
@@ -216,8 +261,19 @@ const selectedRoomDescription = ref('');
 
 const handleRoomClick = (roomId) => {
   selectedRoomId.value = roomId;
+
   if (currentDungeon.value && currentDungeon.value.roomDescriptions) {
     selectedRoomDescription.value = currentDungeon.value.roomDescriptions[roomId];
+  }
+
+  // Reset or load fullRoomDescription
+  if (currentDungeon.value) {
+    const room = currentDungeon.value.rooms.find((room) => room.id === roomId);
+    if (room && room.fullDescription) {
+      fullRoomDescription.value = room.fullDescription;
+    } else {
+      fullRoomDescription.value = null;
+    }
   }
 };
 
@@ -268,6 +324,54 @@ const generateDungeonOverview = async () => {
     console.error('Error generating dungeon overview:', error);
   }
 };
+
+const generateFullRoomDescription = async () => {
+  try {
+    if (!currentDungeon.value || selectedRoomId.value === null) {
+      console.error('No room selected');
+      return;
+    }
+
+    // Get the current room
+    const room = currentDungeon.value.rooms.find(
+      (room) => room.id === selectedRoomId.value
+    );
+    if (!room) {
+      console.error('Selected room not found');
+      return;
+    }
+
+    // Get the dungeon overview
+    const dungeonOverview = currentDungeon.value.dungeonOverview;
+
+    // Get the room descriptions
+    const roomDescriptions = currentDungeon.value.roomDescriptions;
+
+    // Get all rooms
+    const rooms = currentDungeon.value.rooms;
+
+    // Generate the prompt
+    const prompt = dungeonRoomPrompt(dungeonOverview, room, roomDescriptions, rooms);
+
+    // Generate the room description using GPT
+    const response = await generateGptResponse(prompt, validateRoomDescription);
+
+    // Parse the response
+    const roomDescription = JSON.parse(response);
+
+    // Update the room in currentDungeon
+    room.fullDescription = roomDescription;
+
+    // Update the reactive variable
+    fullRoomDescription.value = roomDescription;
+
+    // Save the dungeons
+    saveDungeons();
+  } catch (error) {
+    console.error('Error generating full room description:', error);
+  }
+};
+
 
 // Generate Map
 const generateMap = () => {
