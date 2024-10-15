@@ -67,95 +67,105 @@
         </form>
       </div>
 
-      <Tabs v-if="currentDungeon || loadingOverview" :activeIndex="activeTabIndex">
+      <Tabs v-if="currentDungeon || loadingOverview" :activeIndex="activeTabIndex" @tab-changed="onTabChanged">
         <TabPanel label="Overview">
           <OverviewSkeleton v-if="loadingOverview" />
           <div v-if="currentDungeon && currentDungeon.dungeonOverview" class="dungeon-overview">
             <h2>{{ currentDungeon.dungeonOverview.title }}</h2>
-            <cdr-text>{{ currentDungeon.dungeonOverview.name }}</cdr-text>
-            <cdr-text>{{ currentDungeon.dungeonOverview.overview }}</cdr-text>
-            <cdr-text>
+            <p>{{ currentDungeon.dungeonOverview.overview }}</p>
+            <p class="description-text">
               {{ currentDungeon.dungeonOverview.relation_to_larger_setting }}
               {{ currentDungeon.dungeonOverview.finding_the_dungeon }}
-            </cdr-text>
-            <cdr-text>{{ currentDungeon.dungeonOverview.history }}</cdr-text>
-            <cdr-text>
+            </p>
+            <p class="description-text">{{ currentDungeon.dungeonOverview.history }}</p>
+            <p class="description-text">
               {{ currentDungeon.dungeonOverview.dominant_power }}
               {{ currentDungeon.dungeonOverview.dominant_power_goals }}
               {{ currentDungeon.dungeonOverview.dominant_power_minions }}
-            </cdr-text>
-            <cdr-text>
+            </p>
+            <p class="description-text">
               {{ currentDungeon.dungeonOverview.dominant_power_event }}
               {{ currentDungeon.dungeonOverview.recent_event_consequences }}
-            </cdr-text>
-            <cdr-text>
+            </p>
+            <p class="description-text">
               {{ currentDungeon.dungeonOverview.secondary_power }}
               {{ currentDungeon.dungeonOverview.secondary_power_event }}
-            </cdr-text>
-            <cdr-text>
+            </p>
+            <p class="description-text">
               {{ currentDungeon.dungeonOverview.main_problem }}
               {{ currentDungeon.dungeonOverview.potential_solutions }}
-            </cdr-text>
-            <cdr-text>{{ currentDungeon.dungeonOverview.conclusion }}</cdr-text>
+            </p>
+            <p class="description-text">{{ currentDungeon.dungeonOverview.conclusion }}</p>
           </div>
         </TabPanel>
         <TabPanel label="Map">
-          <!-- Selected Room Description -->
-          <div v-if="currentDungeon && selectedRoomDescription" class="selected-room-description">
-            <h2>Room {{ selectedRoomId }} Description</h2>
-            <cdr-text>{{ selectedRoomDescription }}</cdr-text>
-            <!-- Add button to generate full description -->
-            <cdr-button @click="generateFullRoomDescription" modifier="dark">
-              {{ fullRoomDescription ? 'Re-generate Full Description' : 'Generate Full Description' }}
-            </cdr-button>
-          </div>
-
-          <!-- Full Room Description -->
-          <div v-if="fullRoomDescription" class="full-room-description">
-            <h3>{{ fullRoomDescription.name }}</h3>
-            <cdr-text><strong>Description:</strong> {{ fullRoomDescription.description }}</cdr-text>
-            <cdr-text><strong>Contents:</strong> {{ fullRoomDescription.contents }}</cdr-text>
-            <cdr-text><strong>Hazards:</strong> {{ fullRoomDescription.hazards }}</cdr-text>
-
-            <!-- Display clues if present -->
-            <div v-if="fullRoomDescription.clues_for_key_door && fullRoomDescription.clues_for_key_door.length">
-              <h4>Clues for Key Door:</h4>
-              <ul>
-                <li v-for="(clue, index) in fullRoomDescription.clues_for_key_door" :key="index">
-                  {{ clue }}
-                </li>
-              </ul>
+          <!-- Container for the map and sidebar -->
+          <div class="map-and-sidebar-container">
+            <!-- Dungeon Map -->
+            <div class="dungeon-map-container">
+              <div v-if="currentDungeon && currentDungeon.rooms" ref="mapContainer">
+                <DungeonMap :rooms="currentDungeon.rooms" @roomClicked="handleRoomClick" />
+              </div>
+              <!-- Generate Map Button -->
+              <div v-else>
+                <p>Generate a Map for your dungeon</p>
+              </div>
+              <cdr-button @click="generateMap" modifier="dark">
+                {{ currentDungeon && currentDungeon.rooms ? 'Re-generate Map' : 'Generate Map' }}
+              </cdr-button>
             </div>
 
-            <!-- Display key description if present -->
-            <div v-if="fullRoomDescription.key_description">
-              <h4>Key Description:</h4>
-              <cdr-text>{{ fullRoomDescription.key_description }}</cdr-text>
-            </div>
 
-            <!-- NPCs -->
-            <div v-if="fullRoomDescription.npcs && fullRoomDescription.npcs.length">
-              <h4>NPCs:</h4>
-              <ul>
-                <li v-for="npc in fullRoomDescription.npcs" :key="npc.name">
-                  <strong>{{ npc.name }}:</strong> {{ npc.description }}
-                </li>
-              </ul>
-            </div>
+            <!-- Map Sidebar -->
+            <MapSidebar :style="{ height: mapContainerHeight || 'auto' }">
+              <!-- Selected Room Description -->
+              <div v-if="!fullRoomDescription" class="selected-room-description">
+                <h2>Room {{ selectedRoomId }} Description</h2>
+                <p>{{ selectedRoomDescription }}</p>
+              </div>
+
+              <!-- Full Room Description -->
+              <div v-if="fullRoomDescription" class="full-room-description">
+                <!-- Full Room Description -->
+                <div v-if="fullRoomDescription" class="full-room-description">
+                  <h3>{{ fullRoomDescription.name }}</h3>
+                  <p><strong>Description:</strong> {{ fullRoomDescription.description }}</p>
+                  <p><strong>Contents:</strong> {{ fullRoomDescription.contents }}</p>
+                  <p><strong>Hazards:</strong> {{ fullRoomDescription.hazards }}</p>
+
+                  <!-- Display clues if present -->
+                  <div v-if="fullRoomDescription.clues_for_key_door && fullRoomDescription.clues_for_key_door.length">
+                    <h4>Clues for Key Door:</h4>
+                    <ul>
+                      <li v-for="(clue, index) in fullRoomDescription.clues_for_key_door" :key="index">
+                        {{ clue }}
+                      </li>
+                    </ul>
+                  </div>
+
+                  <!-- Display key description if present -->
+                  <div v-if="fullRoomDescription.key_description">
+                    <h4>Key Description:</h4>
+                    <p>{{ fullRoomDescription.key_description }}</p>
+                  </div>
+
+                  <!-- NPCs -->
+                  <div v-if="fullRoomDescription.npcs && fullRoomDescription.npcs.length">
+                    <h4>NPCs:</h4>
+                    <ul>
+                      <li v-for="npc in fullRoomDescription.npcs" :key="npc.name">
+                        <strong>{{ npc.name }}:</strong> {{ npc.description }}
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+                <!-- Button to generate full description -->
+                <cdr-button @click="generateFullRoomDescription" modifier="dark">
+                  {{ fullRoomDescription ? 'Re-generate Full Description' : 'Generate Full Description' }}
+                </cdr-button>
+              </div>
+            </MapSidebar>
           </div>
-
-          <!-- Dungeon Map -->
-          <div v-if="currentDungeon && currentDungeon.rooms" class="dungeon-map-container">
-            <DungeonMap :rooms="currentDungeon.rooms" @roomClicked="handleRoomClick" />
-          </div>
-
-          <!-- Generate Map Button -->
-          <cdr-text v-if="!currentDungeon || !currentDungeon.rooms">
-            Generate a Map for your dungeon
-          </cdr-text>
-          <cdr-button @click="generateMap" modifier="dark">
-            {{ currentDungeon && currentDungeon.rooms ? 'Re-generate Map' : 'Generate Map' }}
-          </cdr-button>
         </TabPanel>
         <TabPanel label="NPCs">
           <h3>NPC List:</h3>
@@ -166,7 +176,7 @@
                 {{ npc.name }}
               </template>
               <div>
-                <cdr-text><strong>Description:</strong> {{ npc.description }}</cdr-text>
+                <p><strong>Description:</strong> {{ npc.description }}</p>
               </div>
             </cdr-accordion>
           </cdr-accordion-group>
@@ -177,7 +187,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
 import DungeonMap from './DungeonMap.vue';
 import { createRoomDescriptions } from '../util/create-room-descriptions.mjs';
 import { generateDungeon } from '../util/generate-dungeon.mjs';
@@ -188,6 +198,7 @@ import { dungeonOverviewPrompt, validateDungeonOverview } from '../prompts/dunge
 import Tabs from './tabs/Tabs.vue';
 import TabPanel from './tabs/TabPanel.vue';
 import OverviewSkeleton from './skeletons/OverviewSkeleton.vue';
+import MapSidebar from './MapSidebar.vue';
 import {
   CdrInput,
   CdrButton,
@@ -200,6 +211,41 @@ import {
 } from '@rei/cedar';
 const windowWidth = ref(window.innerWidth);
 const isSidebarVisible = ref(false); // Start hidden on mobile
+
+const mapContainer = ref(null);
+const mapContainerHeight = ref('auto');
+const loadingOverview = ref(false);
+const activeTabIndex = ref(0);
+
+
+// Clean up the event listener when the component is unmounted
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', updateMapContainerHeight);
+});
+
+const updateMapContainerHeight = () => {
+  if (mapContainer.value) {
+    mapContainerHeight.value = `${mapContainer.value.clientHeight}px`;
+    console.log('Map Container Height:', mapContainerHeight.value);
+  }
+};
+
+function onTabChanged(index) {
+  activeTabIndex.value = index;
+  updateMapContainerHeight();
+};
+
+watch(
+  () => activeTabIndex.value,
+  (newIndex) => {
+    console.log('Watcher detected tab change:', newIndex);
+    if (newIndex === 1) {
+      nextTick(() => {
+        updateMapContainerHeight();
+      });
+    }
+  }
+);
 
 const sidebarStyle = computed(() => {
   if (windowWidth.value <= 1020) {
@@ -234,9 +280,6 @@ onMounted(() => {
   loadDungeons();
   window.addEventListener('resize', updateWindowWidth);
 });
-
-const loadingOverview = ref(false);
-const activeTabIndex = ref(0);
 
 // Reactive properties
 const dungeons = ref([]);
@@ -434,6 +477,29 @@ const createNewDungeon = () => {
   display: flex;
 }
 
+.map-and-sidebar-container {
+  display: flex;
+  overflow-x: auto;
+  /* Allows horizontal scrolling if needed */
+}
+
+.dungeon-map-container {
+  flex: 1;
+  /* Takes up the remaining space */
+  min-width: 0;
+  /* Ensures the map can shrink properly */
+}
+
+.map-sidebar {
+  flex: 0 0 auto;
+  /* Sidebar doesn't shrink */
+}
+
+.selected-room-description,
+.full-room-description {
+  /* Optional: Add styles for content inside the sidebar */
+}
+
 /* Sidebar Styles */
 .sidebar {
   width: 250px;
@@ -531,6 +597,10 @@ const createNewDungeon = () => {
   border-radius: 5px;
   background-color: #ffffff;
 
+  .description-text {
+    margin-bottom: 1.6rem;
+  }
+
   .dungeon-overview-form {
     margin-top: 20px;
 
@@ -550,13 +620,11 @@ const createNewDungeon = () => {
   }
 
   .dungeon-overview {
-    @include cdr-text-body-300;
-
     h2 {
       margin-top: 0;
     }
 
-    cdr-text {
+    p {
       margin-bottom: 1rem;
     }
   }

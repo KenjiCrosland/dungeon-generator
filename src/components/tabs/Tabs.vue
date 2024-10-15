@@ -33,16 +33,21 @@ const props = defineProps({
   }
 });
 
+const emit = defineEmits(['tab-changed']);
 const tabs = ref([]);
 const currentIndex = ref(props.activeIndex);
 const focusedIndex = ref(props.activeIndex); // Initialize with the active index prop
 const tabRefs = ref([]);
 
-watch(() => props.activeIndex, (newIndex) => {
-  if (newIndex !== currentIndex.value) {
-    selectTab(newIndex);
-  }
-}, { immediate: true });
+watch(
+  () => props.activeIndex,
+  (newIndex) => {
+    if (newIndex !== currentIndex.value) {
+      selectTab(newIndex);
+    }
+  },
+  { immediate: true }
+);
 
 const setButtonRef = (el, index) => {
   tabRefs.value[index] = el;
@@ -52,8 +57,8 @@ function selectTab(index) {
   currentIndex.value = index;
   focusedIndex.value = index; // Update focused index to match the selected tab
   focusTab(index); // Focus when tab is selected
+  emit('tab-changed', index); // Emit the tab-changed event
 }
-
 
 function focusTab(index) {
   if (tabRefs.value[index]) {
@@ -62,22 +67,28 @@ function focusTab(index) {
 }
 
 function moveFocus(currentIndex, direction) {
-  let newIndex = direction === 'next' ?
-    (currentIndex + 1) % tabs.value.length :
-    (currentIndex - 1 + tabs.value.length) % tabs.value.length;
+  let newIndex =
+    direction === 'next'
+      ? (currentIndex + 1) % tabs.value.length
+      : (currentIndex - 1 + tabs.value.length) % tabs.value.length;
   focusedIndex.value = newIndex; // Update focused index
   focusTab(newIndex); // Move focus
 }
 
-watch(focusedIndex, (newIndex) => {
-  tabRefs.value.forEach((tab, index) => {
-    if (tab) tab.tabIndex = index === newIndex ? 0 : -1; // Update tabIndex reactively
-  });
-}, { immediate: true });
+watch(
+  focusedIndex,
+  (newIndex) => {
+    tabRefs.value.forEach((tab, index) => {
+      if (tab) tab.tabIndex = index === newIndex ? 0 : -1; // Update tabIndex reactively
+    });
+  },
+  { immediate: true }
+);
 
 onMounted(() => {
   focusedIndex.value = currentIndex.value; // Initialize focused index
 });
+
 provide('tabs', tabs);
 provide('currentIndex', currentIndex);
 </script>
