@@ -11,7 +11,7 @@
     <div class="overlay" v-show="isSidebarVisible && windowWidth <= 1020" @click="isSidebarVisible = false"></div>
     <div class="sidebar" :style="sidebarStyle">
       <ul class="saved-dungeons">
-        <li v-for="(dungeon, index) in dungeons" :key="dungeon.id" :class="{ active: currentDungeonId === dungeon.id }">
+        <li v-for="(dungeon) in dungeons" :key="dungeon.id" :class="{ active: currentDungeonId === dungeon.id }">
           <button class="dungeon-button" @click="selectDungeon(dungeon.id)">
             <span>{{ dungeon.dungeonOverview.title }}</span>
           </button>
@@ -101,23 +101,29 @@
         <TabPanel label="Map">
           <!-- Container for the map and sidebar -->
           <div class="map-and-sidebar-container">
-            <!-- Dungeon Map -->
-            <div class="dungeon-map-container">
-              <div v-if="currentDungeon && currentDungeon.rooms" ref="mapContainer">
-                <DungeonMap :rooms="currentDungeon.rooms" @roomClicked="handleRoomClick" />
+            <!-- Dungeon Map Wrapper -->
+            <div class="dungeon-map-wrapper" ref="mapWrapper">
+              <!-- Dungeon Map Container -->
+              <div class="dungeon-map-container">
+                <div v-if="currentDungeon && currentDungeon.rooms" ref="mapContainer">
+                  <DungeonMap :rooms="currentDungeon.rooms" @roomClicked="handleRoomClick"
+                    @mapClicked="handleMapClick" />
+                </div>
+                <!-- Generate Map Button -->
+                <div v-else>
+                  <p>Generate a Map for your dungeon</p>
+                  <cdr-button @click="generateMap" modifier="dark">
+                    {{ currentDungeon && currentDungeon.rooms ? 'Re-generate Map' : 'Generate Map' }}
+                  </cdr-button>
+                </div>
               </div>
-              <!-- Generate Map Button -->
-              <div v-else>
-                <p>Generate a Map for your dungeon</p>
-              </div>
-              <cdr-button @click="generateMap" modifier="dark">
-                {{ currentDungeon && currentDungeon.rooms ? 'Re-generate Map' : 'Generate Map' }}
-              </cdr-button>
             </div>
 
 
+
             <!-- Map Sidebar -->
-            <MapSidebar :style="{ height: mapContainerHeight || 'auto' }">
+            <MapSidebar v-model:isCollapsed="isMapSidebarCollapsed" :style="{ height: mapContainerHeight || 'auto' }"
+              ref="mapSidebarRef">
               <!-- Selected Room Description -->
               <div v-if="!fullRoomDescription" class="selected-room-description">
                 <h2>Room {{ selectedRoomId }} Description</h2>
@@ -213,9 +219,13 @@ const windowWidth = ref(window.innerWidth);
 const isSidebarVisible = ref(false); // Start hidden on mobile
 
 const mapContainer = ref(null);
+const mapWrapper = ref(null); // Reference to the map wrapper
+const mapSidebarRef = ref(null); // Reference to the map sidebar component
 const mapContainerHeight = ref('auto');
 const loadingOverview = ref(false);
 const activeTabIndex = ref(0);
+const isMapSidebarCollapsed = ref(true);
+const lastClickedRoomX = ref(null);
 
 
 // Clean up the event listener when the component is unmounted
@@ -302,8 +312,54 @@ const form = reactive({
 const selectedRoomId = ref(null);
 const selectedRoomDescription = ref('');
 
-const handleRoomClick = (roomId) => {
+watch(
+  () => isMapSidebarCollapsed.value,
+  (newVal, oldVal) => {
+    // Check if the sidebar has changed from collapsed to expanded
+    if (oldVal === true && newVal === false) {
+      // If a room is selected, adjust the map scroll position
+      if (selectedRoomId.value !== null) {
+        adjustMapScrollPositionForSelectedRoom();
+      }
+    }
+  }
+);
+
+
+function adjustMapScrollPositionForSelectedRoom() {
+  if (lastClickedRoomX.value !== null) {
+    const roomX = lastClickedRoomX.value;
+
+    // Wait for the sidebar transition to complete
+    nextTick(() => {
+      const sidebarElement = mapSidebarRef.value?.$el;
+
+      if (sidebarElement) {
+        const onTransitionEnd = (event) => {
+          if (event.propertyName === 'width') {
+            sidebarElement.removeEventListener('transitionend', onTransitionEnd);
+            adjustMapScrollPosition(roomX);
+          }
+        };
+
+        sidebarElement.addEventListener('transitionend', onTransitionEnd);
+      } else {
+        adjustMapScrollPosition(roomX);
+      }
+    });
+  }
+}
+
+function handleMapClick() {
+  // Collapse the map sidebar if it's not already collapsed
+  if (!isMapSidebarCollapsed.value) {
+    isMapSidebarCollapsed.value = true;
+  }
+}
+
+function handleRoomClick({ roomId, x }) {
   selectedRoomId.value = roomId;
+  lastClickedRoomX.value = x;
 
   if (currentDungeon.value && currentDungeon.value.roomDescriptions) {
     selectedRoomDescription.value = currentDungeon.value.roomDescriptions[roomId];
@@ -318,7 +374,39 @@ const handleRoomClick = (roomId) => {
       fullRoomDescription.value = null;
     }
   }
+
+  if (isMapSidebarCollapsed.value) {
+    isMapSidebarCollapsed.value = false;
+    // No need to adjust the map scroll position here; the watcher will handle it
+  } else {
+    // Sidebar is already expanded; adjust the map scroll position immediately
+    adjustMapScrollPosition(x);
+  }
 };
+
+function adjustMapScrollPosition(roomX) {
+  const sidebarWidth = 300; // Adjust based on your actual sidebar width
+  const padding = 20; // Optional padding to avoid the room being right at the edge
+
+  if (mapWrapper.value) {
+    // Get the current scroll position and visible area
+    const scrollLeft = mapWrapper.value.scrollLeft;
+    const visibleWidth = mapWrapper.value.clientWidth;
+
+    // Calculate the position where the sidebar starts in the map
+    const sidebarStart = scrollLeft + visibleWidth - sidebarWidth;
+
+    // Check if the room is within the area that will be covered by the sidebar
+    if (roomX > sidebarStart) {
+      // Calculate how much we need to scroll to bring the room into view
+      const scrollAmount = roomX - (scrollLeft + visibleWidth - sidebarWidth) + padding;
+
+      // Scroll the map wrapper left by the calculated amount
+      mapWrapper.value.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  }
+}
+
 
 // Save Dungeons to Local Storage
 const saveDungeons = () => {
@@ -479,18 +567,30 @@ const createNewDungeon = () => {
 
 .map-and-sidebar-container {
   display: flex;
-  overflow-x: auto;
-  /* Allows horizontal scrolling if needed */
+  flex-direction: row;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  position: relative;
+  /* Add position relative if the sidebar is absolutely positioned */
+}
+
+.dungeon-map-wrapper {
+  background-color: #f3f3e8;
+  overflow-x: scroll;
+  flex: 1;
 }
 
 .dungeon-map-container {
-  flex: 1;
-  /* Takes up the remaining space */
-  min-width: 0;
-  /* Ensures the map can shrink properly */
+  min-width: 100%;
+  /* Or set a specific width if needed */
 }
 
 .map-sidebar {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100%;
+  width: 300px;
   flex: 0 0 auto;
   /* Sidebar doesn't shrink */
 }

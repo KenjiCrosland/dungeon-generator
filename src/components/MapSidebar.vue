@@ -2,9 +2,9 @@
   <div class="map-sidebar-container">
     <div class="toggle-button" @click="toggleSidebar">
       <!-- Toggle icon changes based on the state -->
-      <span>{{ isCollapsed ? '<' : '>' }}</span>
+      <span>{{ props.isCollapsed ? '<' : '>' }}</span>
     </div>
-    <div class="map-sidebar" :class="{ 'is-collapsed': isCollapsed }">
+    <div class="map-sidebar" :class="{ 'is-collapsed': props.isCollapsed }">
       <div class="sidebar-content">
         <!-- Slot for injecting content -->
         <slot></slot>
@@ -13,16 +13,23 @@
   </div>
 </template>
 
-
 <script setup>
-import { ref } from 'vue';
+import { defineProps, defineEmits } from 'vue';
 
-const isCollapsed = ref(false);
+const props = defineProps({
+  isCollapsed: {
+    type: Boolean,
+    default: false
+  }
+});
+
+const emit = defineEmits(['update:isCollapsed']);
 
 function toggleSidebar() {
-  isCollapsed.value = !isCollapsed.value;
+  emit('update:isCollapsed', !props.isCollapsed);
 }
 </script>
+
 
 <style scoped>
 .map-sidebar-container {

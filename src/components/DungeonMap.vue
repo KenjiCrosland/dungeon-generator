@@ -6,7 +6,7 @@
 
 <script setup>
 import { onMounted, ref, watch } from 'vue';
-const emit = defineEmits(['roomClicked']);
+const emit = defineEmits(['roomClicked', 'mapClicked']);
 
 const props = defineProps({
   rooms: {
@@ -903,19 +903,29 @@ onMounted(() => {
     const clickX = event.clientX - rect.left;
     const clickY = event.clientY - rect.top;
 
-    numberPositions.forEach(position => {
+    let roomClicked = false;
+
+    numberPositions.forEach((position) => {
       const distance = Math.sqrt(
         (clickX - position.x) ** 2 + (clickY - position.y) ** 2
       );
       if (distance <= position.radius) {
+        roomClicked = true;
         clickedRoomId = position.roomId;
-        emit('roomClicked', position.roomId); // Emit the event with room ID
+        emit('roomClicked', { roomId: position.roomId, x: position.x });
       }
     });
+
+    if (!roomClicked) {
+      // Emit an event indicating that the map was clicked but no room was selected
+      emit('mapClicked');
+    }
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawRooms(ctx);
   });
+
+
 
   // Handle mousedown event for visual feedback
   canvas.addEventListener('mousedown', (event) => {
