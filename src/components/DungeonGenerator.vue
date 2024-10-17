@@ -109,13 +109,6 @@
                   <DungeonMap :rooms="currentDungeon.rooms" @roomClicked="handleRoomClick"
                     @mapClicked="handleMapClick" />
                 </div>
-                <!-- Generate Map Button -->
-                <div v-else>
-                  <p>Generate a Map for your dungeon</p>
-                  <cdr-button @click="generateMap" modifier="dark">
-                    {{ currentDungeon && currentDungeon.rooms ? 'Re-generate Map' : 'Generate Map' }}
-                  </cdr-button>
-                </div>
               </div>
             </div>
 
@@ -134,7 +127,7 @@
               <div v-if="fullRoomDescription" class="full-room-description">
                 <!-- Full Room Description -->
                 <div v-if="fullRoomDescription" class="full-room-description">
-                  <h3>{{ fullRoomDescription.name }}</h3>
+                  <h3>{{ selectedRoomId }}. {{ fullRoomDescription.name }}</h3>
                   <p><strong>Description:</strong> {{ fullRoomDescription.description }}</p>
                   <p><strong>Contents:</strong> {{ fullRoomDescription.contents }}</p>
                   <p><strong>Hazards:</strong> {{ fullRoomDescription.hazards }}</p>
@@ -165,13 +158,18 @@
                     </ul>
                   </div>
                 </div>
-                <!-- Button to generate full description -->
-                <cdr-button @click="generateFullRoomDescription" modifier="dark">
-                  {{ fullRoomDescription ? 'Re-generate Full Description' : 'Generate Full Description' }}
-                </cdr-button>
               </div>
+              <cdr-button @click="generateFullRoomDescription" modifier="dark">
+                {{ fullRoomDescription ? 'Re-generate Full Description' : 'Generate Full Description' }}
+              </cdr-button>
             </MapSidebar>
           </div>
+          <div v-if="currentDungeon && !currentDungeon.rooms">
+            <p>Generate a Map for your dungeon</p>
+          </div>
+          <cdr-button @click="generateMap" modifier="dark">
+            {{ currentDungeon && currentDungeon.rooms ? 'Re-generate Map' : 'Generate Map' }}
+          </cdr-button>
         </TabPanel>
         <TabPanel label="NPCs">
           <h3>NPC List:</h3>
@@ -203,6 +201,7 @@ import { dungeonRoomPrompt, validateRoomDescription } from '../prompts/dungeon-r
 import { dungeonOverviewPrompt, validateDungeonOverview } from '../prompts/dungeon-overview.mjs';
 import Tabs from './tabs/Tabs.vue';
 import TabPanel from './tabs/TabPanel.vue';
+import MapTab from './MapTab.vue';
 import OverviewSkeleton from './skeletons/OverviewSkeleton.vue';
 import MapSidebar from './MapSidebar.vue';
 import {

@@ -37,7 +37,7 @@ function toggleSidebar() {
 }
 
 .map-sidebar {
-  background-color: #f8f8f1;
+  background-color: #fafaf6;
   border-left: 1px solid #ccc;
   width: 300px;
   transition: width 0.3s ease;
