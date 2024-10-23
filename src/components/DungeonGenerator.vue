@@ -111,57 +111,11 @@
                 </div>
               </div>
             </div>
-
-
-
-            <!-- Map Sidebar -->
             <MapSidebar v-model:isCollapsed="isMapSidebarCollapsed" :style="{ height: mapContainerHeight || 'auto' }"
               ref="mapSidebarRef">
-              <!-- Selected Room Description -->
-              <div v-if="!fullRoomDescription" class="selected-room-description">
-                <h2>Room {{ selectedRoomId }} Description</h2>
-                <p>{{ selectedRoomDescription }}</p>
-              </div>
-
-              <!-- Full Room Description -->
-              <div v-if="fullRoomDescription" class="full-room-description">
-                <!-- Full Room Description -->
-                <div v-if="fullRoomDescription" class="full-room-description">
-                  <h3>{{ selectedRoomId }}. {{ fullRoomDescription.name }}</h3>
-                  <p><strong>Description:</strong> {{ fullRoomDescription.description }}</p>
-                  <p><strong>Contents:</strong> {{ fullRoomDescription.contents }}</p>
-                  <p><strong>Hazards:</strong> {{ fullRoomDescription.hazards }}</p>
-
-                  <!-- Display clues if present -->
-                  <div v-if="fullRoomDescription.clues_for_key_door && fullRoomDescription.clues_for_key_door.length">
-                    <h4>Clues for Key Door:</h4>
-                    <ul>
-                      <li v-for="(clue, index) in fullRoomDescription.clues_for_key_door" :key="index">
-                        {{ clue }}
-                      </li>
-                    </ul>
-                  </div>
-
-                  <!-- Display key description if present -->
-                  <div v-if="fullRoomDescription.key_description">
-                    <h4>Key Description:</h4>
-                    <p>{{ fullRoomDescription.key_description }}</p>
-                  </div>
-
-                  <!-- NPCs -->
-                  <div v-if="fullRoomDescription.npcs && fullRoomDescription.npcs.length">
-                    <h4>NPCs:</h4>
-                    <ul>
-                      <li v-for="npc in fullRoomDescription.npcs" :key="npc.name">
-                        <strong>{{ npc.name }}:</strong> {{ npc.description }}
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-              <cdr-button @click="generateFullRoomDescription" modifier="dark">
-                {{ fullRoomDescription ? 'Re-generate Full Description' : 'Generate Full Description' }}
-              </cdr-button>
+              <RoomDescription v-if="!isMapSidebarCollapsed" :currentDungeon="currentDungeon"
+                :selectedRoomId="selectedRoomId" :selectedRoomDescription="selectedRoomDescription"
+                @updateRoomDescription="handleUpdateRoomDescription" />
             </MapSidebar>
           </div>
           <div v-if="currentDungeon && !currentDungeon.rooms">
@@ -197,11 +151,10 @@ import { createRoomDescriptions } from '../util/create-room-descriptions.mjs';
 import { generateDungeon } from '../util/generate-dungeon.mjs';
 import { addDungeonDetails } from '../util/dungeon-details.mjs';
 import { generateGptResponse } from '../util/open-ai.mjs';
-import { dungeonRoomPrompt, validateRoomDescription } from '../prompts/dungeon-room.mjs';
 import { dungeonOverviewPrompt, validateDungeonOverview } from '../prompts/dungeon-overview.mjs';
 import Tabs from './tabs/Tabs.vue';
 import TabPanel from './tabs/TabPanel.vue';
-import MapTab from './MapTab.vue';
+import RoomDescription from './RoomDescription.vue';
 import OverviewSkeleton from './skeletons/OverviewSkeleton.vue';
 import MapSidebar from './MapSidebar.vue';
 import {
@@ -455,53 +408,29 @@ const generateDungeonOverview = async () => {
   }
 };
 
-const generateFullRoomDescription = async () => {
-  try {
-    if (!currentDungeon.value || selectedRoomId.value === null) {
-      console.error('No room selected');
-      return;
-    }
+// function handleUpdateFullRoomDescription({ roomId, roomDescription }) {
+//   if (!currentDungeon.value) return;
+//   const room = currentDungeon.value.rooms.find((room) => room.id === roomId);
+//   if (room) {
+//     room.fullDescription = roomDescription;
+//   }
+//   saveDungeons();
+// }
 
-    // Get the current room
-    const room = currentDungeon.value.rooms.find(
-      (room) => room.id === selectedRoomId.value
-    );
-    if (!room) {
-      console.error('Selected room not found');
-      return;
-    }
+function handleUpdateRoomDescription({ roomId, contentArray, name }) {
+  if (!currentDungeon.value) return;
 
-    // Get the dungeon overview
-    const dungeonOverview = currentDungeon.value.dungeonOverview;
+  const room = currentDungeon.value.rooms.find((room) => room.id === roomId);
+  if (room) {
+    room.contentArray = contentArray;
+    room.name = name; // or room.roomName = name
 
-    // Get the room descriptions
-    const roomDescriptions = currentDungeon.value.roomDescriptions;
-
-    // Get all rooms
-    const rooms = currentDungeon.value.rooms;
-
-    // Generate the prompt
-    const prompt = dungeonRoomPrompt(dungeonOverview, room, roomDescriptions, rooms);
-
-    // Generate the room description using GPT
-    const response = await generateGptResponse(prompt, validateRoomDescription);
-
-    // Parse the response
-    const roomDescription = JSON.parse(response);
-
-    // Update the room in currentDungeon
-    room.fullDescription = roomDescription;
-
-    // Update the reactive variable
-    fullRoomDescription.value = roomDescription;
-
-    // Save the dungeons
+    // Save the updated dungeons data
     saveDungeons();
-  } catch (error) {
-    console.error('Error generating full room description:', error);
+  } else {
+    console.error(`Room with ID ${roomId} not found in currentDungeon`);
   }
-};
-
+}
 
 // Generate Map
 const generateMap = () => {
@@ -526,6 +455,9 @@ const generateMap = () => {
   currentDungeon.value.roomDescriptions = roomDescriptions;
 
   saveDungeons();
+  nextTick(() => {
+    updateMapContainerHeight();
+  });
 };
 
 // Select Dungeon
@@ -589,7 +521,7 @@ const createNewDungeon = () => {
   right: 0;
   top: 0;
   height: 100%;
-  width: 300px;
+  width: 450px;
   flex: 0 0 auto;
   /* Sidebar doesn't shrink */
 }
