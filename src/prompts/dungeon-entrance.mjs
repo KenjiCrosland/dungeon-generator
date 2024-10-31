@@ -1,13 +1,12 @@
 // entrance-room.js
 
-export function generateEntrancePrompt(dungeonOverview, basicDescription) {
+export function generateEntrancePrompt(dungeonOverview, shortDescription) {
   return `
 Using the dungeon overview below, describe the entrance to the dungeon in detail. Be sure to address the following:
 
 Dungeon Overview:
-${JSON.stringify(dungeonOverview, null, 2)}
+${dungeonOverview}
 
-Return the description in JSON format with the following keys:
 
 Below are the guidelines for each sentence in the JSON response:
 
@@ -45,12 +44,17 @@ Please consider the following challenge types when creating the entrance challen
 - Offering: A challenge that requires the players to provide an offering, perform a ritual, or fulfill a specific condition to gain entrance.
 
 When doing the read_aloud_entry, please be sure to use these basic details:
-${basicDescription}
+${shortDescription}
 
 Please only choose one challenge type for the entrance challenge
 
-atmopheric_details:
+Guidelines for the interactive element upon entering the dungeon:
+Introduce unusual objects, guardians, characters, or features in the room that players can interact with. These should be elements that can provoke action, conversation, or decision-making. DO NOT MENTION TRAPS OR ANYTHING HIDDEN TO PLAYERS. DO NOT INCLUDE CHESTS OR TREASURE.
+"A kobold has been chained to the wall, its eyes wide with fear and pain."
+"There appears to be a sleeping face carved into the stone wall, its expression serene and peaceful."
+"A rusty automaton stands in the corner, its gears grinding and whirring as it moves."
 
+Return the description in JSON format with the following keys:
 {
   "name": "Entrance",
   "read_aloud_overview": "A brief description of the dungeon entrance, setting the scene for the challenge.",
@@ -63,14 +67,14 @@ atmopheric_details:
   "failure_scenario": "This is for the Dungeon Master's eyes only. This should explain what happens if the players fail the challenge. What are the consequences of failure? How does it affect the players and the dungeon? The most common negative outcome will be combat (ie a guardian emerges and attacks the players). If the players overcome the failure scenario they can still proceed.",
   "challenge_circumvention": "Ways to circumvent the challenge. This could include alternative solutions, bypassing the obstacle, or using specific items or abilities. This should not be obvious to the players and should require some thought or investigation.",
   "challenge_completion_dm": "A short sentence that says 'once X condition is met, read the following aloud'",
-  "read_aloud_challenge_completion": "A brief description of what the players see or experience when they successfully complete the challenge. This should be applicable to succeeding the first time or after overcoming a failure scenario."
-  "read_aloud_entry": "A brief description of the players entering the dungeon after completing the challenge. This should set the scene for the next part of the adventure."
-  "read_aloud_entrance_room_dimensions": "A brief description of the dimensions of the entrance room. This could include the size, shape, and any notable features of the room."
-  "read_aloud_entrance_room_interesting_feature": "1 sentence describing a single interesting or unusual feature that has no mechanical effect."
-  "read_aloud_entrance_room_interactive_element": "1 sentence describing a single interactive element that players can interact with in the entrance room. This element should be interesting and engaging, but not essential to the story or progression of the adventure. It's just the entrance after all."
-  "interactive_element_header": "A simple header for the interactive element. This could be a title or a summary of the interactive element. Example: 'The Cursed Blade'. Don't get too fancy, just a simple title.",
+  "read_aloud_challenge_completion": "A brief description of what the players see or experience when they successfully complete the challenge. This should be applicable to succeeding the first time or after overcoming a failure scenario.",
+  "read_aloud_entry": "A brief description of the players entering the dungeon after completing the challenge. This should set the scene for the next part of the adventure.",
+  "read_aloud_entrance_room_dimensions": "A brief description of the dimensions of the entrance room. This could include the size, shape, and any notable features of the room.",
+  "read_aloud_entrance_room_interesting_feature": "1 sentence describing a single interesting or unusual feature that has no mechanical effect.",
+  "read_aloud_entrance_room_interactive_element": "1 sentence describing a single interactive element that players can interact with in the entrance room. See the above examples for inspiration.",
+  "interactive_element_header": "A simple header for the interactive element. This could be a title or a summary of the interactive element. Example: 'The Distressed Kobold'. Don't get too fancy, just a simple title.",
   "interactive_element_details": "A brief description of the interactive element. This could include what it does, how it works, and any consequences of interacting with it. Are skill checks required? Does it trigger a combat encounter? Does it provide a reward or information?"
-`;
+}`;
 }
 
 export function validateEntranceResponse(jsonString) {

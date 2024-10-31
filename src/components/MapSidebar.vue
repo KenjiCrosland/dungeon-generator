@@ -39,7 +39,7 @@ function toggleSidebar() {
 .map-sidebar {
   background-color: #fafaf6;
   border-left: 1px solid #ccc;
-  width: 300px;
+  width: 450px;
   transition: width 0.3s ease;
   overflow: hidden;
   display: flex;

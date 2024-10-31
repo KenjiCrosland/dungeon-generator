@@ -29,6 +29,7 @@ import { ref, watch, onMounted } from 'vue';
 import { defineProps, defineEmits } from 'vue';
 import { CdrButton } from '@rei/cedar';
 import { generateGptResponse } from '../util/open-ai.mjs';
+import { contentArrayToString, dungeonOverviewToString } from '../util/content-to-string.mjs';
 
 import {
   generateEntrancePrompt,
@@ -40,6 +41,13 @@ import {
   validateStandardRoomResponse,
   processStandardRoomResponse,
 } from '../prompts/standard-room.mjs';
+import {
+  generateObstaclePrompt,
+  validateObstacleResponse,
+  processObstacleResponse
+} from '../prompts/dungeon-obstacle.mjs'
+import { generateKeyRoomPrompt, validateKeyRoomResponse, processKeyRoomResponse } from '../prompts/key-room.mjs';
+import { generateBossRoomPrompt, validateBossRoomResponse, processBossRoomResponse } from '../prompts/boss-room.mjs';
 
 const props = defineProps({
   currentDungeon: Object, // Entire dungeon object, containing rooms array
@@ -60,6 +68,8 @@ watch(
     if (props.currentDungeon && newVal !== null) {
       loadRoomData(newVal); // Load from dungeon object
       const room = props.currentDungeon.rooms.find((room) => room.id === newVal);
+      //log short description
+      console.log(room.shortDescription)
       if (room) {
         // Use room name from room object if it exists, or fallback to "ID. Room Name"
         roomName.value = `${newVal}. ${room.name || `Room ${newVal}`}`;
@@ -90,9 +100,14 @@ async function generateRoomDescription() {
       return;
     }
 
+    console.log('selected room id', props.selectedRoomId);
+
+
     const room = props.currentDungeon.rooms.find(
       (room) => room.id === props.selectedRoomId
     );
+
+    console.log('room id', room.id);
 
     if (!room) {
       console.error('Selected room not found');
@@ -100,26 +115,52 @@ async function generateRoomDescription() {
     }
 
     const isEntrance = props.selectedRoomId === 1;
-    const dungeonOverview = props.currentDungeon.dungeonOverview;
-    const basicDescription = props.currentDungeon.roomDescriptions[props.selectedRoomId];
+    const dungeonOverview = dungeonOverviewToString(props.currentDungeon.dungeonOverview);
+    const shortDescription = room.shortDescription;
 
-    let prompt, validateResponse, processResponse;
+    let prompt;
+    let roomDescription = {};
+    let fullDescription = '';
 
     if (isEntrance) {
-      prompt = generateEntrancePrompt(dungeonOverview, basicDescription);
-      validateResponse = validateEntranceResponse;
-      processResponse = processEntranceResponse;
-    } else {
-      prompt = generateStandardRoomPrompt(dungeonOverview, room);
-      validateResponse = validateStandardRoomResponse;
-      processResponse = processStandardRoomResponse;
+      prompt = generateEntrancePrompt(dungeonOverview, shortDescription);
+      const response = await generateGptResponse(prompt, validateEntranceResponse);
+      roomDescription = JSON.parse(response);
+      contentArray.value = processEntranceResponse(JSON.parse(response));
+      fullDescription = contentArrayToString(contentArray.value);
     }
 
-    const response = await generateGptResponse(prompt, validateResponse);
-    const roomDescription = JSON.parse(response);
+    if (room.requiresKey) {
+      prompt = generateObstaclePrompt(dungeonOverview, fullDescription, room.shortDescription, room.hasKeyInRoomId)
+      let obstacleResponse = await generateGptResponse(prompt, validateObstacleResponse)
+      let obstacleContentArray = processObstacleResponse(JSON.parse(obstacleResponse))
+      //console.log(obstacleResponse)
+      console.log(obstacleContentArray)
+      contentArray.value.push(...obstacleContentArray)
+      //since we're here, let's get the description of the room with the key
+      let obstacleString = contentArrayToString(obstacleContentArray)
+      let keyRoom = props.currentDungeon.rooms[room.hasKeyInRoomId - 1]
+      console.log(props.currentDungeon.rooms[room.hasKeyInRoomId])
+      prompt = generateKeyRoomPrompt(dungeonOverview, shortDescription, obstacleString)
+      let keyRoomResponse = await generateGptResponse(prompt, validateKeyRoomResponse)
+      let keyRoomContentArray = processKeyRoomResponse(JSON.parse(keyRoomResponse))
+      //we need to get the keyroom from local storage and add the content to it
+      keyRoom.contentArray = [...keyRoomContentArray]
+      emit('updateRoomDescription', {
+        roomId: keyRoom.id,
+        contentArray: keyRoomContentArray,
+        name: JSON.parse(keyRoomResponse).name,
+      });
+    }
+    if (room.bossRoom && room.bossRoom === true) {
+      prompt = generateBossRoomPrompt(dungeonOverview, shortDescription)
+      console.log(prompt)
+      let bossRoomResponse = await generateGptResponse(prompt, validateBossRoomResponse)
+      roomDescription = JSON.parse(bossRoomResponse)
+      let bossRoomContentArray = processBossRoomResponse(JSON.parse(bossRoomResponse))
+      contentArray.value = [...bossRoomContentArray]
+    }
 
-    // Process the room description
-    contentArray.value = processResponse(roomDescription);
 
     // Set room name with ID and new room name (e.g., "1. Entrance")
     const roomNameValue = roomDescription.name || `Room ${props.selectedRoomId}`;

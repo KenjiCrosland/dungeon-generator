@@ -337,7 +337,7 @@ function handleRoomClick({ roomId, x }) {
 };
 
 function adjustMapScrollPosition(roomX) {
-  const sidebarWidth = 300; // Adjust based on your actual sidebar width
+  const sidebarWidth = 450; // Adjust based on your actual sidebar width
   const padding = 20; // Optional padding to avoid the room being right at the edge
 
   if (mapWrapper.value) {
@@ -408,14 +408,6 @@ const generateDungeonOverview = async () => {
   }
 };
 
-// function handleUpdateFullRoomDescription({ roomId, roomDescription }) {
-//   if (!currentDungeon.value) return;
-//   const room = currentDungeon.value.rooms.find((room) => room.id === roomId);
-//   if (room) {
-//     room.fullDescription = roomDescription;
-//   }
-//   saveDungeons();
-// }
 
 function handleUpdateRoomDescription({ roomId, contentArray, name }) {
   if (!currentDungeon.value) return;
@@ -444,10 +436,11 @@ const generateMap = () => {
 
   // Generate room descriptions
   const roomDescriptions = createRoomDescriptions(dungeonRoomArray);
+  console.log('Room Descriptions:', roomDescriptions);
 
   // Assign descriptions to rooms
   dungeonRoomArray.forEach((room, index) => {
-    room.description = roomDescriptions[index];
+    room.shortDescription = roomDescriptions[index + 1];
   });
 
   // Update the current dungeon
