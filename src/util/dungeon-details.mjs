@@ -161,11 +161,67 @@ export function addDungeonDetails(dungeonData) {
     }
   }
 
+  function findShortestPath(
+    graph,
+    startRoomId,
+    endRoomId,
+    excludedEdges = new Set(),
+  ) {
+    let queue = [];
+    let visited = new Set();
+    let predecessor = {};
+    queue.push(startRoomId);
+    visited.add(startRoomId);
+
+    while (queue.length > 0) {
+      let currentRoomId = queue.shift();
+      if (currentRoomId === endRoomId) {
+        // Reconstruct path
+        let path = [];
+        let roomId = endRoomId;
+        while (roomId !== undefined) {
+          path.push(roomId);
+          roomId = predecessor[roomId];
+        }
+        return path.reverse();
+      }
+
+      graph[currentRoomId].forEach((edge) => {
+        if (
+          !visited.has(edge.to) &&
+          !excludedEdges.has(`${currentRoomId}-${edge.to}`) &&
+          edge.type !== 'locked-door' &&
+          edge.type !== 'secret'
+        ) {
+          visited.add(edge.to);
+          predecessor[edge.to] = currentRoomId;
+          queue.push(edge.to);
+        }
+      });
+    }
+    return null; // No path found
+  }
+
+  function assignSetbackRoom(path) {
+    if (!path || path.length < 3) return; // Not enough rooms to assign a setback room
+
+    // Exclude entrance, key room, and boss room
+    let potentialSetbackRooms = path.slice(1, -1);
+
+    // Randomly select a room from potential setback rooms
+    let setbackRoomId =
+      potentialSetbackRooms[Math.floor(potentialSetbackRooms.length / 2)]; // Choose the middle room for consistency
+
+    rooms[setbackRoomId].setbackRoom = true;
+  }
+
   // Start of main function
   let rooms = buildRoomMap(dungeonData);
   let graph = buildGraph(dungeonData);
   let lockedDoors = collectLockedDoors(dungeonData);
   let mainLockedDoor = identifyMainLockedDoor(lockedDoors, graph);
+
+  let entranceRoomId = dungeonData[0].id; // Assuming the first room is the entrance
 
   if (mainLockedDoor) {
     // Existing logic when there is an obstacle and key pair
@@ -220,20 +276,22 @@ export function addDungeonDetails(dungeonData) {
       graph,
     );
     assignBossRoom(bossRoomId);
+
+    // Assign setback room on the path from entrance to key room
+    let pathToKeyRoom = findShortestPath(graph, entranceRoomId, roomWithKeyId);
+    assignSetbackRoom(pathToKeyRoom);
   } else {
     // No main locked door, so assign bossRoom to furthest node from entrance
 
-    // Assuming the entrance room is the first room in dungeonData
-    let entranceRoomId = dungeonData[0].id;
-
-    // Exclude no rooms
-    let excludedRooms = new Set();
-
     // Find the furthest room from the entrance
-    let bossRoomId = findFurthestLeafNode(entranceRoomId, excludedRooms, graph);
+    let bossRoomId = findFurthestLeafNode(entranceRoomId, new Set(), graph);
 
     // Assign bossRoom: true
     assignBossRoom(bossRoomId);
+
+    // Assign setback room on the path from entrance to boss room
+    let pathToBossRoom = findShortestPath(graph, entranceRoomId, bossRoomId);
+    assignSetbackRoom(pathToBossRoom);
   }
 
   // Return the modified dungeon data

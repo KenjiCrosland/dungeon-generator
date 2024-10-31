@@ -48,6 +48,7 @@ import {
 } from '../prompts/dungeon-obstacle.mjs'
 import { generateKeyRoomPrompt, validateKeyRoomResponse, processKeyRoomResponse } from '../prompts/key-room.mjs';
 import { generateBossRoomPrompt, validateBossRoomResponse, processBossRoomResponse } from '../prompts/boss-room.mjs';
+import { generateSetbackRoomPrompt, validateSetbackRoomResponse, processSetbackRoomResponse } from '../prompts/setback-room.mjs';
 
 const props = defineProps({
   currentDungeon: Object, // Entire dungeon object, containing rooms array
@@ -159,6 +160,14 @@ async function generateRoomDescription() {
       roomDescription = JSON.parse(bossRoomResponse)
       let bossRoomContentArray = processBossRoomResponse(JSON.parse(bossRoomResponse))
       contentArray.value = [...bossRoomContentArray]
+    }
+
+    if (room.setbackRoom && room.setbackRoom === true) {
+      prompt = generateSetbackRoomPrompt(dungeonOverview, shortDescription)
+      let setbackRoomResponse = await generateGptResponse(prompt, validateSetbackRoomResponse)
+      roomDescription = JSON.parse(setbackRoomResponse)
+      let setbackRoomContentArray = processSetbackRoomResponse(JSON.parse(setbackRoomResponse))
+      contentArray.value = [...setbackRoomContentArray]
     }
 
 
