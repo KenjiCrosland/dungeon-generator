@@ -50,7 +50,7 @@ export function generateObstaclePrompt(
     solutions[Math.floor(Math.random() * solutions.length)];
 
   return `
-Using the dungeon overview and room description below, describe an **obstacle** in this room that will require the adventurers to fulfill a requirement before progressing further. The obstacle should be **${randomObstacleType}**. To overcome this obstacle, the players will need to **${randomSolution}**, which involves going to another room in the dungeon (Room ID: ${solutionRoomId}).
+Using the dungeon overview and room description below, describe an **obstacle** in this room that will require the adventurers to fulfill a requirement before progressing further. The obstacle should be **${randomObstacleType}**. To overcome this obstacle, the players will need to **${randomSolution}**, which involves going to another room in the dungeon (Room ID: ${solutionRoomId}). If the "key" is not an actual key, don't use the word "key" in the description--say what it acutally is.
 
 **Dungeon Overview:**
 ${dungeonOverview}

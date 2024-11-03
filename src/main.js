@@ -1,4 +1,6 @@
 import { createApp } from 'vue';
+import { createPinia } from 'pinia';
+
 import './style.css';
 import App from './App.vue';
 import '@rei/cedar/dist/cdr-fonts.css';
@@ -18,4 +20,8 @@ import '@rei/cedar/dist/style/cdr-body.css';
 import '@rei/cedar/dist/style/cdr-skeleton.css';
 import '@rei/cedar/dist/style/cdr-skeleton-bone.css';
 
-createApp(App).mount('#app');
+const app = createApp(App);
+const pinia = createPinia();
+
+app.use(pinia);
+app.mount('#app');

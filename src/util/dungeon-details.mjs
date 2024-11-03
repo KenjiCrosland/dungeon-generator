@@ -1,5 +1,6 @@
 export function addDungeonDetails(dungeonData) {
   // Helper functions
+
   function buildRoomMap(dungeonData) {
     let rooms = {};
     dungeonData.forEach((room) => {
@@ -103,119 +104,12 @@ export function addDungeonDetails(dungeonData) {
     return mainLockedDoor;
   }
 
-  function collectRoomsBeyond(startRoomId, excludeRoomId, graph) {
-    let visited = new Set();
-    function dfs(roomId) {
-      if (visited.has(roomId)) return;
-      visited.add(roomId);
-      graph[roomId].forEach((edge) => {
-        if (
-          edge.to !== excludeRoomId &&
-          edge.type !== 'locked-door' &&
-          edge.type !== 'secret'
-        ) {
-          dfs(edge.to);
-        }
-      });
-    }
-    dfs(startRoomId);
-    return visited;
-  }
-
-  function findFurthestLeafNode(startRoomId, excludedRooms, graph) {
-    let queue = [];
-    let visited = new Set();
-    queue.push({ roomId: startRoomId, path: [startRoomId] });
-    visited.add(startRoomId);
-    let furthestLeafRoomId = startRoomId;
-    let maxPathLength = 0;
-
-    while (queue.length > 0) {
-      let { roomId, path } = queue.shift();
-      let isLeaf = true;
-
-      graph[roomId].forEach((edge) => {
-        if (
-          !excludedRooms.has(edge.to) &&
-          !visited.has(edge.to) &&
-          edge.type !== 'locked-door' &&
-          edge.type !== 'secret'
-        ) {
-          isLeaf = false;
-          visited.add(edge.to);
-          queue.push({ roomId: edge.to, path: [...path, edge.to] });
-        }
-      });
-
-      if (isLeaf && path.length >= maxPathLength) {
-        maxPathLength = path.length;
-        furthestLeafRoomId = roomId;
-      }
-    }
-    return furthestLeafRoomId;
-  }
-
-  function assignBossRoom(bossRoomId) {
+  function assignBossRoom(bossRoomId, rooms) {
     if (bossRoomId !== null && rooms[bossRoomId]) {
       rooms[bossRoomId].bossRoom = true;
     }
   }
 
-  function findShortestPath(
-    graph,
-    startRoomId,
-    endRoomId,
-    excludedEdges = new Set(),
-  ) {
-    let queue = [];
-    let visited = new Set();
-    let predecessor = {};
-    queue.push(startRoomId);
-    visited.add(startRoomId);
-
-    while (queue.length > 0) {
-      let currentRoomId = queue.shift();
-      if (currentRoomId === endRoomId) {
-        // Reconstruct path
-        let path = [];
-        let roomId = endRoomId;
-        while (roomId !== undefined) {
-          path.push(roomId);
-          roomId = predecessor[roomId];
-        }
-        return path.reverse();
-      }
-
-      graph[currentRoomId].forEach((edge) => {
-        if (
-          !visited.has(edge.to) &&
-          !excludedEdges.has(`${currentRoomId}-${edge.to}`) &&
-          edge.type !== 'locked-door' &&
-          edge.type !== 'secret'
-        ) {
-          visited.add(edge.to);
-          predecessor[edge.to] = currentRoomId;
-          queue.push(edge.to);
-        }
-      });
-    }
-    return null; // No path found
-  }
-
-  function assignSetbackRoom(path) {
-    if (!path || path.length < 3) return; // Not enough rooms to assign a setback room
-
-    // Exclude entrance, key room, and boss room
-    let potentialSetbackRooms = path.slice(1, -1);
-
-    // Select the middle room for consistency
-    let setbackRoomId =
-      potentialSetbackRooms[Math.floor(potentialSetbackRooms.length / 2)];
-
-    rooms[setbackRoomId].setbackRoom = true;
-  }
-
-  // Updated function to parse room size from shortDescription
   function parseRoomSize(shortDescription) {
     if (!shortDescription) return null;
 
@@ -336,10 +230,166 @@ export function addDungeonDetails(dungeonData) {
         // Assign connecting room only if the room has 3 or more connections
         room.roomType = 'connecting';
       } else {
-        // Assign as 'corridor' for rooms with 1 or 2 connections not assigned above
+        // Assign as 'misc' for rooms with 1 or 2 connections not assigned above
         room.roomType = 'misc';
       }
     });
+  }
+
+  function findShortestPath(graph, startRoomId, endRoomId) {
+    let queue = [];
+    let visited = new Set();
+    let predecessor = {};
+    queue.push(startRoomId);
+    visited.add(startRoomId);
+
+    while (queue.length > 0) {
+      let currentRoomId = queue.shift();
+      if (currentRoomId === endRoomId) {
+        // Reconstruct path
+        let path = [];
+        let roomId = endRoomId;
+        while (roomId !== undefined) {
+          path.push(roomId);
+          roomId = predecessor[roomId];
+        }
+        return path.reverse();
+      }
+
+      graph[currentRoomId].forEach((edge) => {
+        if (!visited.has(edge.to)) {
+          visited.add(edge.to);
+          predecessor[edge.to] = currentRoomId;
+          queue.push(edge.to);
+        }
+      });
+    }
+    return null; // No path found
+  }
+
+  // Modified function to prioritize traversal through unlocked doors
+  function collectRoomsBeyond(
+    startRoomId,
+    excludeRoomId,
+    graph,
+    rooms,
+    keyDoorRoomId,
+  ) {
+    let visited = new Set();
+    let queue = [];
+    visited.add(startRoomId);
+    queue.push(startRoomId);
+
+    while (queue.length > 0) {
+      let roomId = queue.shift();
+      let edges = graph[roomId];
+
+      let unlockedEdges = [];
+      let lockedEdges = [];
+
+      edges.forEach((edge) => {
+        if (edge.to !== excludeRoomId && !visited.has(edge.to)) {
+          // Skip traversal through the door that requires the key we're assigning
+          if (
+            edge.type === 'locked-door' &&
+            ((rooms[edge.to].requiresKey &&
+              rooms[edge.to].hasKeyInRoomId === keyDoorRoomId) ||
+              (edge.doorway &&
+                edge.doorway.requiresKey &&
+                edge.to === keyDoorRoomId))
+          ) {
+            return;
+          }
+          if (edge.type === 'locked-door' || edge.type === 'secret') {
+            lockedEdges.push(edge);
+          } else {
+            unlockedEdges.push(edge);
+          }
+        }
+      });
+
+      // First, process unlocked edges
+      unlockedEdges.forEach((edge) => {
+        visited.add(edge.to);
+        queue.push(edge.to);
+      });
+
+      // Then, process locked edges
+      lockedEdges.forEach((edge) => {
+        visited.add(edge.to);
+        queue.push(edge.to);
+      });
+    }
+
+    return visited;
+  }
+
+  function findFurthestLeafNode(
+    startRoomId,
+    excludedRooms,
+    graph,
+    rooms,
+    keyDoorRoomId,
+  ) {
+    let queue = [];
+    let visited = new Set();
+    queue.push({ roomId: startRoomId, path: [startRoomId] });
+    visited.add(startRoomId);
+    let furthestLeafRoomId = null;
+    let maxPathLength = 0;
+
+    while (queue.length > 0) {
+      let { roomId, path } = queue.shift();
+      let isLeaf = true;
+
+      // Get edges and sort them to prioritize unlocked doors
+      let edges = graph[roomId];
+
+      let unlockedEdges = [];
+      let lockedEdges = [];
+
+      edges.forEach((edge) => {
+        if (!excludedRooms.has(edge.to) && !visited.has(edge.to)) {
+          // Skip traversal through the door that requires the key we're assigning
+          if (
+            edge.type === 'locked-door' &&
+            ((rooms[edge.to].requiresKey &&
+              rooms[edge.to].hasKeyInRoomId === keyDoorRoomId) ||
+              (edge.doorway &&
+                edge.doorway.requiresKey &&
+                edge.to === keyDoorRoomId))
+          ) {
+            return;
+          }
+          if (edge.type === 'locked-door' || edge.type === 'secret') {
+            lockedEdges.push(edge);
+          } else {
+            unlockedEdges.push(edge);
+          }
+        }
+      });
+
+      // First, process unlocked edges
+      unlockedEdges.forEach((edge) => {
+        isLeaf = false;
+        visited.add(edge.to);
+        queue.push({ roomId: edge.to, path: [...path, edge.to] });
+      });
+
+      // Then, process locked edges
+      lockedEdges.forEach((edge) => {
+        isLeaf = false;
+        visited.add(edge.to);
+        queue.push({ roomId: edge.to, path: [...path, edge.to] });
+      });
+
+      if (isLeaf && path.length >= maxPathLength && roomId !== startRoomId) {
+        maxPathLength = path.length;
+        furthestLeafRoomId = roomId;
+      }
+    }
+
+    return furthestLeafRoomId;
   }
 
   // Start of main function
@@ -351,8 +401,6 @@ export function addDungeonDetails(dungeonData) {
   let entranceRoomId = dungeonData[0].id; // Assuming the first room is the entrance
 
   if (mainLockedDoor) {
-    // Existing logic when there is an obstacle and key pair
-
     // Add requiresKey and hasKeyInRoomId to the room with the locked door
     let roomWithLockedDoor = rooms[mainLockedDoor.from];
     roomWithLockedDoor.requiresKey = true;
@@ -367,23 +415,32 @@ export function addDungeonDetails(dungeonData) {
       position: mainLockedDoor.doorway.position,
     };
 
-    // Get rooms beyond the locked door
+    // Get rooms beyond the locked door, prioritizing unlocked paths
     let roomsBeyondLockedDoor = collectRoomsBeyond(
       mainLockedDoor.to,
       mainLockedDoor.from,
       graph,
+      rooms,
+      roomWithLockedDoor.id,
     );
 
     // Find the furthest leaf node in a different direction for the key
     let roomWithKeyId = findFurthestLeafNode(
-      mainLockedDoor.from,
+      entranceRoomId,
       roomsBeyondLockedDoor,
       graph,
+      rooms,
+      roomWithLockedDoor.id,
     );
+
+    if (!roomWithKeyId) {
+      // Handle the case where no suitable room is found
+      roomWithKeyId = entranceRoomId;
+    }
 
     // Update the room with the key
     let roomWithKey = rooms[roomWithKeyId];
-    roomWithKey.hasKeyForRoomId = mainLockedDoor.from;
+    roomWithKey.hasKeyForRoomId = roomWithLockedDoor.id;
 
     // Update the room with the locked door
     roomWithLockedDoor.hasKeyInRoomId = roomWithKeyId;
@@ -396,29 +453,37 @@ export function addDungeonDetails(dungeonData) {
       }
     });
 
-    // Assign the boss room
+    // Assign the boss room, prioritizing unlocked paths
     let bossRoomId = findFurthestLeafNode(
       mainLockedDoor.to,
       new Set([mainLockedDoor.from]),
       graph,
+      rooms,
+      null, // No need to exclude doors here
     );
-    assignBossRoom(bossRoomId);
+    assignBossRoom(bossRoomId, rooms);
 
     // Assign setback room on the path from entrance to key room
     let pathToKeyRoom = findShortestPath(graph, entranceRoomId, roomWithKeyId);
-    assignSetbackRoom(pathToKeyRoom);
+    assignSetbackRoom(pathToKeyRoom, rooms);
   } else {
     // No main locked door, so assign bossRoom to furthest node from entrance
 
     // Find the furthest room from the entrance
-    let bossRoomId = findFurthestLeafNode(entranceRoomId, new Set(), graph);
+    let bossRoomId = findFurthestLeafNode(
+      entranceRoomId,
+      new Set(),
+      graph,
+      rooms,
+      null,
+    );
 
     // Assign bossRoom: true
-    assignBossRoom(bossRoomId);
+    assignBossRoom(bossRoomId, rooms);
 
     // Assign setback room on the path from entrance to boss room
     let pathToBossRoom = findShortestPath(graph, entranceRoomId, bossRoomId);
-    assignSetbackRoom(pathToBossRoom);
+    assignSetbackRoom(pathToBossRoom, rooms);
   }
 
   // Assign room types
@@ -426,4 +491,18 @@ export function addDungeonDetails(dungeonData) {
 
   // Return the modified dungeon data
   return dungeonData;
+}
+
+// Helper function to assign setback room
+function assignSetbackRoom(path, rooms) {
+  if (!path || path.length < 3) return; // Not enough rooms to assign a setback room
+
+  // Exclude entrance, key room, and boss room
+  let potentialSetbackRooms = path.slice(1, -1);
+
+  // Select the middle room for consistency
+  let setbackRoomId =
+    potentialSetbackRooms[Math.floor(potentialSetbackRooms.length / 2)];
+
+  rooms[setbackRoomId].setbackRoom = true;
 }
