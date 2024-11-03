@@ -22,22 +22,46 @@ function calculateMergedRoomArea(sections) {
   return tileSet.size * 25;
 }
 
-// Helper function to determine room shape for merged rooms
-function determineRoomShape(sections) {
-  const minX = Math.min(...sections.map((r) => r.x));
-  const minY = Math.min(...sections.map((r) => r.y));
-  const maxX = Math.max(...sections.map((r) => r.x + r.width));
-  const maxY = Math.max(...sections.map((r) => r.y + r.height));
+// Helper function to determine room shape
+function determineRoomShape(room) {
+  let width, height;
 
-  const boundingArea = (maxX - minX) * (maxY - minY);
+  if (room.type === 'merged') {
+    // For merged rooms, calculate bounding dimensions
+    const minX = Math.min(...room.sections.map((r) => r.x));
+    const minY = Math.min(...room.sections.map((r) => r.y));
+    const maxX = Math.max(...room.sections.map((r) => r.x + r.width));
+    const maxY = Math.max(...room.sections.map((r) => r.y + r.height));
 
-  const actualArea = calculateMergedRoomArea(sections) / 25; // Number of tiles
+    width = maxX - minX;
+    height = maxY - minY;
 
-  if (actualArea < boundingArea) {
-    return 'L-shaped';
+    const boundingArea = width * height;
+
+    const actualArea = calculateMergedRoomArea(room.sections) / 25; // Number of tiles
+
+    if (actualArea < boundingArea) {
+      room.shape = 'L-shaped';
+      return;
+    }
+  } else {
+    // For simple rooms
+    width = room.width;
+    height = room.height;
   }
 
-  return null; // If it's rectangular
+  // Determine if the room is square
+  if (width === height) {
+    room.shape = 'square';
+  }
+  // Determine if the room is long (corridor-like)
+  else if ((width <= 3 && height >= 6) || (height <= 3 && width >= 6)) {
+    room.shape = 'long';
+  }
+  // Determine if the room is rectangular
+  else {
+    room.shape = 'rectangular';
+  }
 }
 
 // Function to preprocess rooms and handle merged rooms
@@ -62,9 +86,11 @@ export function preprocessRooms(rooms) {
         doorways: room.sections.flatMap((r) =>
           r.doorways.filter((d) => d.type !== 'merged'),
         ),
-        shape: determineRoomShape(room.sections),
         area: calculateMergedRoomArea(room.sections),
       };
+
+      // Determine room shape
+      determineRoomShape(combinedRoom);
 
       // Add the combined room to the language rooms
       languageRooms.push(combinedRoom);
@@ -76,6 +102,10 @@ export function preprocessRooms(rooms) {
         // Exclude 'merged' doorways if any
         doorways: room.doorways.filter((d) => d.type !== 'merged'),
       };
+
+      // Determine room shape
+      determineRoomShape(roomWithArea);
+
       languageRooms.push(roomWithArea);
     }
   });
@@ -144,6 +174,18 @@ function addConnectedRoomIds(rooms) {
       }
     });
   });
+}
+
+// Helper function to format lists into natural language
+function listToText(list) {
+  if (list.length === 1) {
+    return list[0];
+  } else if (list.length === 2) {
+    return `${list[0]} and ${list[1]}`;
+  } else {
+    const lastItem = list.pop();
+    return `${list.join(', ')}, and ${lastItem}`;
+  }
 }
 
 // Function to generate room descriptions
@@ -221,7 +263,16 @@ function describeRoom(room) {
   });
 
   // Start with the default description
-  let description = `This is a ${sizeDescription} room (${squareFeet} square feet).`;
+  let description = `This is a ${sizeDescription}`;
+
+  // Include shape description
+  if (room.shape) {
+    description += `, ${room.shape} room`;
+  } else {
+    description += ' room';
+  }
+
+  description += ` (${squareFeet} square feet).`;
 
   // Set to keep track of doorways already mentioned
   const mentionedDoorways = new Set();
@@ -283,24 +334,7 @@ function describeRoom(room) {
     }
   }
 
-  // Include shape description only if L-shaped
-  if (room.shape === 'L-shaped') {
-    description += ' The room is L-shaped.';
-  }
-
   return description.trim();
-}
-
-// Helper function to format lists into natural language
-function listToText(list) {
-  if (list.length === 1) {
-    return list[0];
-  } else if (list.length === 2) {
-    return `${list[0]} and ${list[1]}`;
-  } else {
-    const lastItem = list.pop();
-    return `${list.join(', ')}, and ${lastItem}`;
-  }
 }
 
 // Main function to create room descriptions based on room data

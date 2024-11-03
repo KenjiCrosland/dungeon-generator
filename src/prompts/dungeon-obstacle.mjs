@@ -72,7 +72,7 @@ Note: The "locked" door in the short description indicates the side of the room 
 - **obstacle_solution**: For the Dungeon Master's eyes only. Explain how the players can overcome the obstacle by **${randomSolution}**, involving going to Room ID: ${solutionRoomId}.
 - **obstacle_circumvention**: Ways players might bypass the obstacle without fulfilling the intended requirement. This should require creative thinking or investigation.
 - **obstacle_completion_dm**: A short sentence like 'Once the players fulfill X condition, read the following aloud.'
-- **read_aloud_obstacle_completion**: A description to read aloud when players successfully overcome the obstacle.
+- **read_aloud_obstacle_completion**: A description to read aloud when players successfully overcome the obstacle. Remember that the obstacle is in another room, so the party may hear mechanisms unlocking, oppressive auras lifting or doors opening but not see the direct result.
 
 **Guidelines:**
 - Be creative and ensure the obstacle fits within the context of the dungeon overview and room description.

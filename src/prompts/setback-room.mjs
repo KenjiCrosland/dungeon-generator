@@ -36,8 +36,9 @@ ${shortDescription}
 
 **Return the description in JSON format with the following keys:**
 
-- **name**: A short, evocative name for the setback room.
-- **read_aloud_description**: A vivid description to read aloud when players enter the room, setting the scene and atmosphere.
+- **name**: A short name for the setback room. This should simple and describe the type of room it is: Chantry, Library, Laboratory, etc.
+- **read_aloud_description**: A vivid description to read aloud when players enter the room, setting the scene and atmosphere. The first sentence should provide the general dimensions and layout of the room. The second sentence should provide a single atmospheric detail. The sentences after that should introduce the setback.
+- **room_purpose**: A brief description of the room's function or purpose within the dungeon. This should also provide reasons for the setback's existence.
 - **setback_explanation**: For the Dungeon Master's eyes only. Describe the nature of the setback, its causes, and its effects on the party.
 - **avoidance_checks**: For the Dungeon Master's eyes only. Describe the skill checks players can attempt to avoid or lessen the setback, including what each check entails and its potential outcome.
 - **overcoming_setback**: For the Dungeon Master's eyes only. Explain how the players can overcome the setback, including any required actions, items, or information.
@@ -48,8 +49,9 @@ ${shortDescription}
 
 \`\`\`json
 {
-  "name": "The Chamber of Echoes",
-  "read_aloud_description": "As you enter the chamber, whispers swirl around you, and the air grows heavy. Ancient runes flicker on the walls, and a faint humming resonates beneath your feet.",
+  "name": "Chantry",
+  "read_aloud_description": "The ceiling of this chamber stretches high above, adorned with intricate runes that seem to shift and writhe. The air is thick with the scent of incense, and a soft chanting echoes through the room. At the far end, a shadow flickers in mid-air coalescing into a spectral figure.",
+  "room_purpose": "This room serves as a place of worship and ritual for the temple's inhabitants.",
   "setback_explanation": "The room is haunted by lingering spirits trapped by a cursed ritual. The spirits seek to possess the living to escape their confinement.",
   "avoidance_checks": [
     "By observing the shifting runes on the walls, players may sense the presence of a lingering curse. This awareness can help them brace for the spiritual assault, lessening its impact.",
@@ -72,6 +74,7 @@ export function validateSetbackRoomResponse(jsonString) {
     const requiredKeys = [
       'name',
       'read_aloud_description',
+      'room_purpose',
       'setback_explanation',
       'avoidance_checks',
       'overcoming_setback',
@@ -98,11 +101,11 @@ export function validateSetbackRoomResponse(jsonString) {
 
 export function processSetbackRoomResponse(data) {
   const content = [];
-  content.push({ format: 'header', content: data.name });
   content.push({
     format: 'read_aloud',
     content: data.read_aloud_description,
   });
+  content.push({ format: 'paragraph', content: data.room_purpose });
   content.push({ format: 'paragraph', content: data.setback_explanation });
   content.push({ format: 'header', content: 'Avoidance Skill Checks' });
   data.avoidance_checks.forEach((check) => {

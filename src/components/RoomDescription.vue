@@ -49,6 +49,7 @@ import {
 import { generateKeyRoomPrompt, validateKeyRoomResponse, processKeyRoomResponse } from '../prompts/key-room.mjs';
 import { generateBossRoomPrompt, validateBossRoomResponse, processBossRoomResponse } from '../prompts/boss-room.mjs';
 import { generateSetbackRoomPrompt, validateSetbackRoomResponse, processSetbackRoomResponse } from '../prompts/setback-room.mjs';
+import { generateLivingRoomPrompt, validateLivingRoomResponse, processLivingRoomResponse } from '../prompts/living-room.mjs';
 
 const props = defineProps({
   currentDungeon: Object, // Entire dungeon object, containing rooms array
@@ -129,6 +130,14 @@ async function generateRoomDescription() {
       roomDescription = JSON.parse(response);
       contentArray.value = processEntranceResponse(JSON.parse(response));
       fullDescription = contentArrayToString(contentArray.value);
+    }
+
+    if (room.roomType === 'living') {
+      const existingRooms = props.currentDungeon.roomNames.join(', ')
+      prompt = generateLivingRoomPrompt(dungeonOverview, shortDescription, existingRooms)
+      let livingRoomResponse = await generateGptResponse(prompt, validateLivingRoomResponse)
+      roomDescription = JSON.parse(livingRoomResponse)
+      contentArray.value = processLivingRoomResponse(JSON.parse(livingRoomResponse))
     }
 
     if (room.requiresKey) {

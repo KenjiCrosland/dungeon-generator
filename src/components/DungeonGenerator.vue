@@ -416,6 +416,7 @@ function handleUpdateRoomDescription({ roomId, contentArray, name }) {
   if (room) {
     room.contentArray = contentArray;
     room.name = name; // or room.roomName = name
+    currentDungeon.value.roomNames = currentDungeon.value.rooms.map(room => room.name).filter(Boolean) || [];
 
     // Save the updated dungeons data
     saveDungeons();

@@ -208,11 +208,138 @@ export function addDungeonDetails(dungeonData) {
     // Exclude entrance, key room, and boss room
     let potentialSetbackRooms = path.slice(1, -1);
 
-    // Randomly select a room from potential setback rooms
+    // Select the middle room for consistency
     let setbackRoomId =
-      potentialSetbackRooms[Math.floor(potentialSetbackRooms.length / 2)]; // Choose the middle room for consistency
+      potentialSetbackRooms[Math.floor(potentialSetbackRooms.length / 2)];
 
     rooms[setbackRoomId].setbackRoom = true;
+  }
+
+  // Updated function to parse room size from shortDescription
+  function parseRoomSize(shortDescription) {
+    if (!shortDescription) return null;
+
+    const sizeRegex = /(small|medium|large)(?:-sized)? room/i;
+    const match = shortDescription.match(sizeRegex);
+    if (match) {
+      return match[1].toLowerCase();
+    }
+    return null;
+  }
+
+  function assignRoomTypes(dungeonData, entranceRoomId, graph) {
+    let guardRoomCount = 0;
+    let storageRoomCount = 0;
+
+    // Set maximum guard and storage rooms based on total rooms
+    const totalRooms = dungeonData.length;
+    const maxGuardRooms = totalRooms >= 15 ? 2 : 1;
+    const maxStorageRooms = totalRooms >= 15 ? 2 : 1;
+
+    // First, mark the special rooms
+    dungeonData.forEach((room) => {
+      // Assign entrance room
+      if (room.id === entranceRoomId) {
+        room.roomType = 'entrance';
+      }
+      // Assign boss room, key room, and setback room as purpose rooms
+      else if (room.bossRoom || room.hasKeyForRoomId || room.setbackRoom) {
+        room.roomType = 'purpose';
+      }
+
+      // Parse and add room size to the room object
+      room.size = parseRoomSize(room.shortDescription);
+    });
+
+    // Ensure no purpose room connects directly to the entrance
+    graph[entranceRoomId].forEach((edge) => {
+      let connectedRoom = rooms[edge.to];
+      if (connectedRoom.roomType === 'purpose') {
+        connectedRoom.roomType = null; // Reset to be reassigned
+      }
+    });
+
+    // Now, assign room types for the rest
+    dungeonData.forEach((room) => {
+      // Skip rooms that already have a roomType
+      if (room.roomType) {
+        return;
+      }
+
+      const numConnections = room.doorways.length;
+      const roomSize = room.size;
+
+      // Determine adjacent room types
+      let adjacentRoomTypes = new Set();
+      graph[room.id].forEach((edge) => {
+        let adjacentRoom = rooms[edge.to];
+        if (adjacentRoom.roomType) {
+          adjacentRoomTypes.add(adjacentRoom.roomType);
+        }
+      });
+
+      // Decide whether to assign it as a purpose room
+      let purposeClusterSize = 0;
+      let livingClusterSize = 0;
+
+      adjacentRoomTypes.forEach((type) => {
+        if (type === 'purpose') {
+          purposeClusterSize++;
+        }
+        if (type === 'living') {
+          livingClusterSize++;
+        }
+      });
+
+      // Adjust chance based on cluster sizes
+      let purposeChance = 0.2;
+      let livingChance = 0.5;
+
+      if (purposeClusterSize === 1) {
+        purposeChance = 0.6;
+      } else if (purposeClusterSize >= 2) {
+        purposeChance = 0.2;
+      }
+
+      if (livingClusterSize === 1) {
+        livingChance = 0.8;
+      } else if (livingClusterSize >= 2) {
+        livingChance = 0.3;
+      }
+
+      // Ensure the room does not connect directly to the entrance if it's a purpose room
+      let connectsToEntrance = graph[room.id].some(
+        (edge) => edge.to === entranceRoomId,
+      );
+
+      // Start assigning room types based on updated logic
+      if (!connectsToEntrance && Math.random() < purposeChance) {
+        room.roomType = 'purpose';
+      } else if (Math.random() < livingChance) {
+        room.roomType = 'living';
+      } else if (
+        numConnections <= 2 &&
+        guardRoomCount < maxGuardRooms &&
+        Math.random() < 0.3
+      ) {
+        room.roomType = 'guard';
+        guardRoomCount++;
+      } else if (
+        numConnections === 1 &&
+        storageRoomCount < maxStorageRooms &&
+        roomSize === 'small' && // Only assign storage rooms to small rooms
+        Math.random() < 0.5
+      ) {
+        room.roomType = 'storage';
+        storageRoomCount++;
+      } else if (numConnections >= 3) {
+        // Assign connecting room only if the room has 3 or more connections
+        room.roomType = 'connecting';
+      } else {
+        // Assign as 'corridor' for rooms with 1 or 2 connections not assigned above
+        room.roomType = 'misc';
+      }
+    });
   }
 
   // Start of main function
@@ -293,6 +420,9 @@ export function addDungeonDetails(dungeonData) {
     let pathToBossRoom = findShortestPath(graph, entranceRoomId, bossRoomId);
     assignSetbackRoom(pathToBossRoom);
   }
+
+  // Assign room types
+  assignRoomTypes(dungeonData, entranceRoomId, graph);
 
   // Return the modified dungeon data
   return dungeonData;

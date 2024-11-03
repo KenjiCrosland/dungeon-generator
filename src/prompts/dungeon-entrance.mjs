@@ -70,10 +70,8 @@ Return the description in JSON format with the following keys:
   "read_aloud_challenge_completion": "A brief description of what the players see or experience when they successfully complete the challenge. This should be applicable to succeeding the first time or after overcoming a failure scenario.",
   "read_aloud_entry": "A brief description of the players entering the dungeon after completing the challenge. This should set the scene for the next part of the adventure.",
   "read_aloud_entrance_room_dimensions": "A brief description of the dimensions of the entrance room. This could include the size, shape, and any notable features of the room.",
-  "read_aloud_entrance_room_interesting_feature": "1 sentence describing a single interesting or unusual feature that has no mechanical effect.",
-  "read_aloud_entrance_room_interactive_element": "1 sentence describing a single interactive element that players can interact with in the entrance room. See the above examples for inspiration.",
-  "interactive_element_header": "A simple header for the interactive element. This could be a title or a summary of the interactive element. Example: 'The Distressed Kobold'. Don't get too fancy, just a simple title.",
-  "interactive_element_details": "A brief description of the interactive element. This could include what it does, how it works, and any consequences of interacting with it. Are skill checks required? Does it trigger a combat encounter? Does it provide a reward or information?"
+  "read_aloud_entrance_room_interesting_feature": "1 sentence describing a single interesting or unusual feature that has no mechanical effect. Further investigation may reveal lore about the dungeon.",
+  "interesting_feature_lore": "For the Dungeon Master's eyes only. This should provide additional lore or information about the interesting feature. This could be a hint to a future challenge, a piece of history, or a clue to a hidden treasure. Make sure this feature makes sense for the entrance to the dungeon. It could be an old guard post or a small shrine used for spiritual cleansing upon entrance of the temple.",
 }`;
 }
 
@@ -94,9 +92,7 @@ export function validateEntranceResponse(jsonString) {
     'read_aloud_entry',
     'read_aloud_entrance_room_dimensions',
     'read_aloud_entrance_room_interesting_feature',
-    'read_aloud_entrance_room_interactive_element',
-    'interactive_element_header',
-    'interactive_element_details',
+    'interesting_feature_lore',
   ];
   for (const key of requiredKeys) {
     if (!(key in data)) {
@@ -124,12 +120,11 @@ export function processEntranceResponse(data) {
   });
   content.push({
     format: 'read_aloud',
-    content: `${data.read_aloud_challenge_completion} \n\n ${data.read_aloud_entry} ${data.read_aloud_entrance_room_dimensions} ${data.read_aloud_entrance_room_interesting_feature} ${data.read_aloud_entrance_room_interactive_element}`,
+    content: `${data.read_aloud_challenge_completion} \n\n ${data.read_aloud_entry} ${data.read_aloud_entrance_room_dimensions} ${data.read_aloud_entrance_room_interesting_feature}`,
   });
-  content.push({ format: 'header', content: data.interactive_element_header });
   content.push({
     format: 'paragraph',
-    content: data.interactive_element_details,
+    content: data.interesting_feature_lore,
   });
 
   return content;
