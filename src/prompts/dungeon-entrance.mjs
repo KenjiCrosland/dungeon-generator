@@ -72,6 +72,7 @@ Return the description in JSON format with the following keys:
   "read_aloud_entrance_room_dimensions": "A brief description of the dimensions of the entrance room. This could include the size, shape, and any notable features of the room.",
   "read_aloud_entrance_room_interesting_feature": "1 sentence describing a single interesting or unusual feature that has no mechanical effect. Further investigation may reveal lore about the dungeon.",
   "interesting_feature_lore": "For the Dungeon Master's eyes only. This should provide additional lore or information about the interesting feature. This could be a hint to a future challenge, a piece of history, or a clue to a hidden treasure. Make sure this feature makes sense for the entrance to the dungeon. It could be an old guard post or a small shrine used for spiritual cleansing upon entrance of the temple.",
+  "one_sentence_summary": "A concise summary the purpose and function of the room. This should be a single sentence that encapsulates the room's essence.",
 }`;
 }
 
@@ -93,6 +94,7 @@ export function validateEntranceResponse(jsonString) {
     'read_aloud_entrance_room_dimensions',
     'read_aloud_entrance_room_interesting_feature',
     'interesting_feature_lore',
+    'one_sentence_summary',
   ];
   for (const key of requiredKeys) {
     if (!(key in data)) {

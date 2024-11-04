@@ -123,6 +123,16 @@
             <MapSidebar v-model:isCollapsed="dungeonStore.isMapSidebarCollapsed"
               :style="{ height: mapContainerHeight || 'auto' }" ref="mapSidebarRef">
               <RoomDescription v-if="!dungeonStore.isMapSidebarCollapsed" />
+              <div v-if="!dungeonStore.isMapSidebarCollapsed && selectedRoom && selectedRoom.doorways.length">
+                <h3>Connecting Rooms:</h3>
+                <ul>
+                  <li v-for="doorway in selectedRoom.doorways" :key="doorway.connectedRoomId">
+                    <cdr-button modifier="link" @click="selectConnectedRoom(doorway.connectedRoomId)">
+                      {{ doorway.connectedRoomId }}. {{ getRoomName(doorway.connectedRoomId) }}
+                    </cdr-button>
+                  </li>
+                </ul>
+              </div>
             </MapSidebar>
           </div>
           <div v-if="dungeonStore.currentDungeon && !dungeonStore.currentDungeon.rooms">
@@ -180,6 +190,43 @@ const mapContainer = ref(null);
 const mapWrapper = ref(null); // Reference to the map wrapper
 const mapSidebarRef = ref(null); // Reference to the map sidebar component
 const mapContainerHeight = ref('auto');
+
+const selectedRoom = computed(() => {
+  if (
+    dungeonStore.currentDungeon &&
+    dungeonStore.currentDungeon.rooms &&
+    dungeonStore.selectedRoomId !== null
+  ) {
+    return dungeonStore.currentDungeon.rooms.find(
+      (room) => room.id === dungeonStore.selectedRoomId
+    );
+  }
+  return null;
+});
+
+function selectConnectedRoom(roomId) {
+  dungeonStore.selectedRoomId = roomId;
+
+  if (dungeonStore.isMapSidebarCollapsed) {
+    dungeonStore.isMapSidebarCollapsed = false;
+  }
+}
+
+function getRoomName(roomId) {
+  const room = dungeonStore.currentDungeon.rooms.find((room) => room.id === roomId);
+  return room ? `${room.name || 'Unnamed'}` : `Unnamed`;
+}
+
+
+function formatDoorwayType(type) {
+  // Replace hyphens with spaces and capitalize each word
+  return type
+    .split('-')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+
 
 function updateMapContainerHeight() {
   if (mapContainer.value) {

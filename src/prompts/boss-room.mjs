@@ -47,6 +47,7 @@ ${shortDescription}
 **Return the description in JSON format with the following keys:**
 
 - **name**: A short, evocative name for the boss room.
+- **one_sentence_summary**: A concise summary of the room's purpose and atmosphere.
 - **read_aloud_description**: A vivid description to read aloud when players enter the room, setting the scene and atmosphere.
 - **boss_name**: The name of the boss.
 - **boss_description**: For the Dungeon Master's eyes only. Describe the boss's appearance, abilities, and any unique traits.
@@ -63,6 +64,7 @@ ${shortDescription}
 
 {
   "name": "The Abyssal Sanctum",
+  "one_sentence_summary": "A chamber of shadow and water where an ancient elemental seeks to flood the world.",
   "read_aloud_description": "You step into a vast chamber carved from obsidian, illuminated by the eerie glow of floating crystals. At the center, a swirling vortex pulses with dark energy.",
   "boss_name": "Hydrothrax, the Abyssal Tidebinder",
   "boss_description": "Hydrothrax is a towering elemental composed of shadowy water, its form constantly shifting. Tendrils of dark energy emanate from its core, and its eyes glow with ancient power.",
@@ -84,6 +86,7 @@ export function validateBossRoomResponse(jsonString) {
     const data = JSON.parse(jsonString);
     const requiredKeys = [
       'name',
+      'one_sentence_summary',
       'read_aloud_description',
       'boss_name',
       'boss_description',

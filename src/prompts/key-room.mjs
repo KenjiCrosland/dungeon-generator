@@ -21,6 +21,7 @@ It's very important to not add any extra entrances or exits to the room. The sho
 **Return the description in JSON format with the following keys:**
 
 - **name**: A short, evocative name for the room.
+- **one_sentence_summary**: A concise summary of the room's purpose and atmosphere.
 - **read_aloud_description**: A description to read aloud when players enter the room, setting the scene and describing key features without revealing hidden information.
 - **key_explanation**: For the Dungeon Master's eyes only. Explain what the "key" is, its history, and its connection to the obstacle and the dungeon.
 - **key_location**: For the Dungeon Master's eyes only. Describe where the "key" is located within the room (e.g., hidden, guarded, or in plain sight).
@@ -45,6 +46,7 @@ export function validateKeyRoomResponse(jsonString) {
     const data = JSON.parse(jsonString);
     const requiredKeys = [
       'name',
+      'one_sentence_summary',
       'read_aloud_description',
       'key_explanation',
       'key_location',

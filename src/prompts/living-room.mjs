@@ -4,6 +4,7 @@ export function generateLivingRoomPrompt(
   dungeonOverview,
   shortDescription,
   existingRooms = 'none',
+  connectedRoomsInfo,
 ) {
   return `
 Using the dungeon overview and the short room description below, create a detailed description of a daily use type room within the dungeon. This room should provide a slice of life for the current or former residents, fitting within the context of the dungeon's lore and theme.
@@ -14,6 +15,9 @@ ${dungeonOverview}
 **Short Room Description (includes size, exits, and any notable features):**
 ${shortDescription}
 No need to use the room's shape in the description if it's not relevant to the room's function. Just use the shape to inform other details. For example if the room is long, you could say that there are many beds lined up against the walls.
+
+**Connected Rooms:**
+This room is connected to the following rooms: ${connectedRoomsInfo}
 
 **Guidelines:**
 
@@ -67,6 +71,7 @@ Compose the **read_aloud_description** using the following sentence-by-sentence 
 **Return the description in JSON format with the following keys:**
 
 - **name**: A short, appropriate name for the room (e.g., "Barracks", "Kitchen", "Goblin Camp", "Parlor", "Bedroom"). This name should be 1-2 words and should be simple, almost dull. The interesting stuff is in the description not the name. Just give us the function of the room.
+- **one_sentence_summary**: A brief summary of the room's function or purpose within the dungeon.
 - **lore_description**: For the Dungeon Master's eyes only. Describe the room's function or purpose within the dungeon. Who spends or spent time here? What activities take place or took place here? Were all inhabitants allowed in this room or just a select few?
 - **features_and_contents**: For the Dungeon Master's eyes only. Describe notable features, items, or information present in the room that may be of interest to the players.
 - **interactive_element_header**: A brief header for the interactive element in the room (e.g., "The Ghostly Figure", "The Enchanted Tome", "The Ornate Chest").
@@ -80,6 +85,7 @@ Compose the **read_aloud_description** using the following sentence-by-sentence 
 \`\`\`json
 {
   "name": "Cultist Dormitory",
+  "one_sentence_summary": "A room where cultists once slept and meditated.",
   "lore_description": "This room served as the sleeping quarters for the cultists who once inhabited the dungeon. They would gather here for rest and meditation between their dark rituals.",
   "features_and_contents": "The cots are neatly made, with small personal belongings tucked under each pillow. A faded tapestry depicting a hooded figure hangs above the entrance.",
   "interactive_element_header": "The Hooded Figure",
@@ -104,6 +110,7 @@ export function validateLivingRoomResponse(jsonString) {
     const data = JSON.parse(jsonString);
     const requiredKeys = [
       'name',
+      'one_sentence_summary',
       'read_aloud_description',
       'lore_description',
       'features_and_contents',

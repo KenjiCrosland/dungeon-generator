@@ -37,6 +37,7 @@ ${shortDescription}
 **Return the description in JSON format with the following keys:**
 
 - **name**: A short name for the setback room. This should simple and describe the type of room it is: Chantry, Library, Laboratory, etc.
+- **one_sentence_summary**: A concise summary of the room's purpose and atmosphere.
 - **read_aloud_description**: A vivid description to read aloud when players enter the room, setting the scene and atmosphere. The first sentence should provide the general dimensions and layout of the room. The second sentence should provide a single atmospheric detail. The sentences after that should introduce the setback.
 - **room_purpose**: A brief description of the room's function or purpose within the dungeon. This should also provide reasons for the setback's existence.
 - **setback_explanation**: For the Dungeon Master's eyes only. Describe the nature of the setback, its causes, and its effects on the party.
@@ -50,6 +51,7 @@ ${shortDescription}
 \`\`\`json
 {
   "name": "Chantry",
+  "one_sentence_summary": "A room of spiritual significance, haunted by malevolent spirits.",
   "read_aloud_description": "The ceiling of this chamber stretches high above, adorned with intricate runes that seem to shift and writhe. The air is thick with the scent of incense, and a soft chanting echoes through the room. At the far end, a shadow flickers in mid-air coalescing into a spectral figure.",
   "room_purpose": "This room serves as a place of worship and ritual for the temple's inhabitants.",
   "setback_explanation": "The room is haunted by lingering spirits trapped by a cursed ritual. The spirits seek to possess the living to escape their confinement.",
