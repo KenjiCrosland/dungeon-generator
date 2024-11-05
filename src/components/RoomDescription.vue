@@ -17,15 +17,29 @@
         <p>{{ item.content }}</p>
       </template>
     </div>
-    <cdr-button @click="generateDescription" modifier="dark">
-      {{ contentArray.length > 1 ? 'Re-generate Description' : 'Generate Description' }}
-    </cdr-button>
+
+    <div v-if="!dungeonStore.isMapSidebarCollapsed && room && room.doorways.length">
+      <h3>Connecting Rooms:</h3>
+      <cdr-list class="connecting-room-list">
+        <li class="connecting-room" v-for="doorway in room.doorways" :key="doorway.connectedRoomId">
+          <cdr-button size="small" modifier="link" @click="selectConnectedRoom(doorway.connectedRoomId)">
+            {{ doorway.connectedRoomId }}. {{ getRoomName(doorway.connectedRoomId) }}
+          </cdr-button>
+        </li>
+      </cdr-list>
+    </div>
+
+    <div class="generation-button">
+      <cdr-button size="small" @click="generateDescription" modifier="dark">
+        {{ contentArray.length > 1 ? 'Re-generate Description' : 'Generate Description' }}
+      </cdr-button>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, watch, onMounted, computed } from 'vue';
-import { CdrButton } from '@rei/cedar';
+import { CdrButton, CdrList } from '@rei/cedar';
 import { useDungeonStore } from '../stores/dungeon-store.mjs';
 import { useRoomDescription } from '../composables/useRoomDescription.js';
 
@@ -34,6 +48,18 @@ const { generateRoomDescription } = useRoomDescription();
 
 const contentArray = ref([]);
 const roomName = ref('');
+const room = ref(null);
+
+// **Define getRoomName Method**
+function getRoomName(roomId) {
+  const connectedRoom = dungeonStore.currentDungeon.rooms.find(r => r.id === roomId);
+  return connectedRoom ? connectedRoom.name || `Room ${roomId}` : `Room ${roomId}`;
+}
+
+// **Define selectConnectedRoom Method**
+function selectConnectedRoom(roomId) {
+  dungeonStore.selectedRoomId = roomId;
+}
 
 // Watch for changes in selectedRoomId
 watch(
@@ -47,12 +73,12 @@ watch(
 );
 
 function loadRoomData(roomId) {
-  const room = dungeonStore.currentDungeon.rooms.find((room) => room.id === roomId);
-  if (room) {
-    contentArray.value = room.contentArray || [
+  room.value = dungeonStore.currentDungeon.rooms.find((room) => room.id === roomId);
+  if (room.value) {
+    contentArray.value = room.value.contentArray || [
       { format: 'paragraph', content: 'No description available.' },
     ];
-    roomName.value = `${roomId}. ${room.name || `Room ${roomId}`}`;
+    roomName.value = `${roomId}. ${room.value.name || `Room ${roomId}`}`;
   } else {
     contentArray.value = [{ format: 'paragraph', content: 'No description available.' }];
     roomName.value = `Room ${roomId}`;
@@ -71,7 +97,6 @@ onMounted(() => {
   }
 });
 </script>
-
 
 <style scoped>
 .read-aloud-box {
@@ -94,5 +119,19 @@ onMounted(() => {
 .selected-room-description h2,
 .full-room-description h3 {
   margin-bottom: 0.5rem;
+}
+
+.generation-button {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.connecting-room-list {
+  margin-top: 0;
+  padding-left: 0;
+}
+
+.connecting-room {
+  list-style: none;
 }
 </style>

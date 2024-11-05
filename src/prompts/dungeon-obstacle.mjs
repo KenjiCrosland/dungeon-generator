@@ -10,7 +10,7 @@ export function generateObstaclePrompt(
   const obstacleTypes = [
     'a physical barrier (e.g., a flooded chamber, a wall of thorns, a chasm)',
     'a magical illusion (e.g., a never-ending hallway, shifting walls)',
-    "an impassable guardian that's very difficult to defeat",
+    "an impassable guardian that's very difficult to defeat (not the boss of the dungeon)",
     'a magical barrier (e.g., an energy field, a time distortion)',
     'an environmental hazard (e.g., toxic gas filling the room, extreme heat)',
     'a trap that must be disarmed or avoided',

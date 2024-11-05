@@ -106,7 +106,7 @@ export function addDungeonDetails(dungeonData) {
 
   function assignBossRoom(bossRoomId, rooms) {
     if (bossRoomId !== null && rooms[bossRoomId]) {
-      rooms[bossRoomId].bossRoom = true;
+      rooms[bossRoomId].roomType = 'boss';
     }
   }
 
@@ -125,7 +125,7 @@ export function addDungeonDetails(dungeonData) {
     let guardRoomCount = 0;
     let storageRoomCount = 0;
 
-    // Set maximum guard and storage rooms based on total rooms
+    // Set maximum guard and storage rooms based on total rofoms
     const totalRooms = dungeonData.length;
     const maxGuardRooms = totalRooms >= 15 ? 2 : 1;
     const maxStorageRooms = totalRooms >= 15 ? 2 : 1;
@@ -137,7 +137,7 @@ export function addDungeonDetails(dungeonData) {
         room.roomType = 'entrance';
       }
       // Assign boss room, key room, and setback room as purpose rooms
-      else if (room.bossRoom || room.hasKeyForRoomId || room.setbackRoom) {
+      else if (room.hasKeyForRoomId) {
         room.roomType = 'purpose';
       }
 
@@ -504,5 +504,5 @@ function assignSetbackRoom(path, rooms) {
   let setbackRoomId =
     potentialSetbackRooms[Math.floor(potentialSetbackRooms.length / 2)];
 
-  rooms[setbackRoomId].setbackRoom = true;
+  rooms[setbackRoomId].roomType = 'setback';
 }

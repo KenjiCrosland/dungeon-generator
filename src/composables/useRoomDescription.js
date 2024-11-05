@@ -131,6 +131,30 @@ export function useRoomDescription() {
         );
         roomDescription = JSON.parse(response);
         contentArray = processEntranceResponse(roomDescription);
+      } else if (room.roomType === 'boss') {
+        prompt = generateBossRoomPrompt(
+          dungeonOverview,
+          shortDescription,
+          connectedRoomsInfo,
+        );
+        const bossRoomResponse = await generateGptResponse(
+          prompt,
+          validateBossRoomResponse,
+        );
+        roomDescription = JSON.parse(bossRoomResponse);
+        contentArray = processBossRoomResponse(roomDescription);
+      } else if (room.roomType === 'setback') {
+        prompt = generateSetbackRoomPrompt(
+          dungeonOverview,
+          shortDescription,
+          connectedRoomsInfo,
+        );
+        const setbackRoomResponse = await generateGptResponse(
+          prompt,
+          validateSetbackRoomResponse,
+        );
+        roomDescription = JSON.parse(setbackRoomResponse);
+        contentArray = processSetbackRoomResponse(roomDescription);
       } else if (room.roomType === 'living') {
         const existingRooms = currentDungeon.roomNames.join(', ');
         prompt = generateLivingRoomPrompt(
@@ -172,30 +196,6 @@ export function useRoomDescription() {
         );
         roomDescription = JSON.parse(purposeRoomResponse);
         contentArray = processPurposeRoomResponse(roomDescription);
-      } else if (room.bossRoom) {
-        prompt = generateBossRoomPrompt(
-          dungeonOverview,
-          shortDescription,
-          connectedRoomsInfo,
-        );
-        const bossRoomResponse = await generateGptResponse(
-          prompt,
-          validateBossRoomResponse,
-        );
-        roomDescription = JSON.parse(bossRoomResponse);
-        contentArray = processBossRoomResponse(roomDescription);
-      } else if (room.setbackRoom) {
-        prompt = generateSetbackRoomPrompt(
-          dungeonOverview,
-          shortDescription,
-          connectedRoomsInfo,
-        );
-        const setbackRoomResponse = await generateGptResponse(
-          prompt,
-          validateSetbackRoomResponse,
-        );
-        roomDescription = JSON.parse(setbackRoomResponse);
-        contentArray = processSetbackRoomResponse(roomDescription);
       }
 
       // **Handle Rooms That Require a Key**

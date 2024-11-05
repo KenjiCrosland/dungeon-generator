@@ -123,16 +123,6 @@
             <MapSidebar v-model:isCollapsed="dungeonStore.isMapSidebarCollapsed"
               :style="{ height: mapContainerHeight || 'auto' }" ref="mapSidebarRef">
               <RoomDescription v-if="!dungeonStore.isMapSidebarCollapsed" />
-              <div v-if="!dungeonStore.isMapSidebarCollapsed && selectedRoom && selectedRoom.doorways.length">
-                <h3>Connecting Rooms:</h3>
-                <ul>
-                  <li v-for="doorway in selectedRoom.doorways" :key="doorway.connectedRoomId">
-                    <cdr-button modifier="link" @click="selectConnectedRoom(doorway.connectedRoomId)">
-                      {{ doorway.connectedRoomId }}. {{ getRoomName(doorway.connectedRoomId) }}
-                    </cdr-button>
-                  </li>
-                </ul>
-              </div>
             </MapSidebar>
           </div>
           <div v-if="dungeonStore.currentDungeon && !dungeonStore.currentDungeon.rooms">
