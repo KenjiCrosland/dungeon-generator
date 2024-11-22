@@ -57,6 +57,13 @@
                 </template>
               </cdr-input>
             </div>
+            <cdr-select class="generator-field-select" id="difficulty" v-model="dungeonStore.form.difficulty"
+              background="secondary" label="Dungeon Difficulty" :options="difficultyOptions"
+              :placeholder="'Select Difficulty'">
+              <template #helper-text-bottom>
+                Select the desired difficulty tier for the dungeon.
+              </template>
+            </cdr-select>
             <div class="lore-field-input">
               <cdr-input :rows="5" tag="textarea" v-model="dungeonStore.form.place_lore" background="secondary"
                 label="Dungeon Lore" placeholder="Enter any additional details about the dungeon">
@@ -109,14 +116,22 @@
 
         <TabPanel label="Map">
           <!-- Container for the map and sidebar -->
-          <div class="map-and-sidebar-container">
+          <div class="map-and-sidebar-container" ref="mapContainer">
             <!-- Dungeon Map Wrapper -->
             <div class="dungeon-map-wrapper" ref="mapWrapper">
               <!-- Dungeon Map Container -->
-              <div class="dungeon-map-container">
-                <div v-if="dungeonStore.currentDungeon && dungeonStore.currentDungeon.rooms" ref="mapContainer">
+              <div v-if="dungeonStore.currentDungeon" class="dungeon-map-container">
+                <h4>{{ dungeonStore.currentDungeon.dungeonOverview.title }}</h4>
+                <div v-if="dungeonStore.currentDungeon.rooms">
                   <DungeonMap :rooms="dungeonStore.currentDungeon.rooms" @roomClicked="handleRoomClick"
                     @mapClicked="handleMapClick" />
+                </div>
+                <div class="generate-button-container">
+                  <cdr-button @click="handleGenerateMapClick" modifier="dark" size="small">
+                    {{ dungeonStore.currentDungeon && dungeonStore.currentDungeon.rooms ? 'Re-generate Map' :
+                      'Generate Map'
+                    }}
+                  </cdr-button>
                 </div>
               </div>
             </div>
@@ -128,24 +143,73 @@
           <div v-if="dungeonStore.currentDungeon && !dungeonStore.currentDungeon.rooms">
             <p>Generate a Map for your dungeon</p>
           </div>
-          <cdr-button @click="dungeonStore.generateMap" modifier="dark">
-            {{ dungeonStore.currentDungeon && dungeonStore.currentDungeon.rooms ? 'Re-generate Map' : 'Generate Map' }}
-          </cdr-button>
         </TabPanel>
+        <!-- NPCs TabPanel -->
         <TabPanel label="NPCs">
-          <h3>NPC List:</h3>
-          <cdr-accordion-group v-if="dungeonStore.currentDungeon && dungeonStore.currentDungeon.dungeonOverview">
-            <cdr-accordion v-for="npc in dungeonStore.currentDungeon.dungeonOverview.npc_list" :key="npc.name"
-              :id="npc.name" level="4" @accordion-toggle="npc.open = !npc.open" :opened="npc.open">
+          <h2>Notable NPCs</h2>
+
+          <!-- NPC List -->
+          <cdr-accordion-group v-if="dungeonStore.currentDungeon && dungeonStore.currentDungeon.npcs">
+            <cdr-accordion v-for="(npc, index) in dungeonStore.currentDungeon.npcs" :key="index" :id="'npc-' + index"
+              :opened="npc.opened" @accordion-toggle="npc.opened = !npc.opened" level="2">
               <template #label>
                 {{ npc.name }}
               </template>
               <div>
-                <p><strong>Description:</strong> {{ npc.description }}</p>
+                <p><strong>Short Description:</strong> {{ npc.short_description }}</p>
+
+                <!-- If NPC has full details, display them -->
+                <div v-if="npc.description_of_position">
+                  <p><strong>Description of Position:</strong> {{ npc.description_of_position }}</p>
+                  <p><strong>Current Location:</strong> {{ npc.current_location }}</p>
+                  <p><strong>Distinctive Features or Mannerisms:</strong> {{ npc.distinctive_features_or_mannerisms }}
+                  </p>
+                  <p><strong>Character Secret:</strong> {{ npc.character_secret }}</p>
+                  <h3>Read-Aloud Description</h3>
+                  <p>{{ npc.read_aloud_description }}</p>
+                  <h3>Relationships</h3>
+                  <div v-for="(relationship, relatedNpcName) in npc.relationships" :key="relatedNpcName">
+                    <p><strong>{{ relatedNpcName }}:</strong> {{ relationship }}</p>
+                  </div>
+                  <h3>Roleplaying Tips</h3>
+                  <p>{{ npc.roleplaying_tips }}</p>
+                </div>
+
+                <!-- If NPC does not have full details, display button to generate them -->
+                <div v-else>
+                  <cdr-button @click="dungeonStore.generateDungeonNPC(index)"
+                    :disabled="dungeonStore.currentlyLoadingNPC">
+                    Generate Full Description
+                  </cdr-button>
+                </div>
+
+                <!-- Delete NPC Button -->
+                <cdr-button @click="dungeonStore.deleteNPC(index)">
+                  Delete NPC
+                </cdr-button>
               </div>
             </cdr-accordion>
           </cdr-accordion-group>
+
+          <!-- Form to Add New NPCs -->
+          <h3>Add a New NPC</h3>
+          <cdr-input v-model="dungeonStore.npcName" label="NPC Name">
+            <template #helper-text-bottom>
+              Enter the name of the NPC.
+            </template>
+          </cdr-input>
+          <cdr-input v-model="dungeonStore.npcShortDescription" label="NPC Short Description">
+            <template #helper-text-bottom>
+              Examples: "A trapped explorer seeking help", "A ghost haunting the corridors", "A lost child"
+            </template>
+          </cdr-input>
+          <cdr-button @click="dungeonStore.addNPC()" :disabled="dungeonStore.currentlyLoadingNPC">
+            Add NPC
+          </cdr-button>
         </TabPanel>
+
+
+
       </Tabs>
     </div>
   </div>
@@ -163,6 +227,7 @@ import {
   CdrInput,
   CdrButton,
   CdrLink,
+  CdrSelect,
   CdrAccordionGroup,
   CdrAccordion,
   CdrFormGroup,
@@ -180,6 +245,14 @@ const mapContainer = ref(null);
 const mapWrapper = ref(null); // Reference to the map wrapper
 const mapSidebarRef = ref(null); // Reference to the map sidebar component
 const mapContainerHeight = ref('auto');
+
+const difficultyOptions = [
+  'Tier 1: Basic - A local hero in the making.',
+  'Tier 2: Expert - An established local hero.',
+  'Tier 3: Companion - A regional/kingdom hero.',
+  'Tier 4: Master - A hero of the world.',
+  'Tier 5: Immortal - A hero of the realms.',
+]
 
 const selectedRoom = computed(() => {
   if (
@@ -221,7 +294,6 @@ function formatDoorwayType(type) {
 function updateMapContainerHeight() {
   if (mapContainer.value) {
     mapContainerHeight.value = `${mapContainer.value.clientHeight}px`;
-    console.log('Map Container Height:', mapContainerHeight.value);
   }
 }
 
@@ -233,7 +305,6 @@ function onTabChanged(index) {
 watch(
   () => dungeonStore.activeTabIndex,
   (newIndex) => {
-    console.log('Watcher detected tab change:', newIndex);
     if (newIndex === 1) {
       nextTick(() => {
         updateMapContainerHeight();
@@ -241,6 +312,22 @@ watch(
     }
   }
 );
+
+function handleGenerateMapClick() {
+  if (dungeonStore.currentDungeon && dungeonStore.currentDungeon.rooms) {
+    // A map already exists, ask for confirmation
+    const confirmed = window.confirm(
+      'Are you sure you want to re-generate the map? This will overwrite the existing map and all of its room descriptions.'
+    );
+    if (confirmed) {
+      dungeonStore.generateMap();
+    }
+  } else {
+    // No map exists, generate one directly
+    dungeonStore.generateMap();
+  }
+}
+
 
 const sidebarStyle = computed(() => {
   if (windowWidth.value <= 1020) {
@@ -326,17 +413,23 @@ function adjustMapScrollPosition(roomX) {
   flex-wrap: nowrap;
   overflow: hidden;
   position: relative;
+  min-height: 75vh;
   /* Add position relative if the sidebar is absolutely positioned */
 }
 
 .dungeon-map-wrapper {
-  background-color: #f3f3e8;
+  background-color: #fafaf6;
   overflow-x: scroll;
   flex: 1;
+  display: flex;
+  justify-content: center;
 }
 
 .dungeon-map-container {
-  min-width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
   /* Or set a specific width if needed */
 }
 
@@ -344,7 +437,7 @@ function adjustMapScrollPosition(roomX) {
   position: absolute;
   right: 0;
   top: 0;
-  height: 100%;
+  min-height: 75vh;
   width: 450px;
   flex: 0 0 auto;
   /* Sidebar doesn't shrink */
@@ -491,6 +584,11 @@ function adjustMapScrollPosition(roomX) {
       margin-bottom: 1rem;
     }
   }
+}
+
+.generate-button-container {
+  text-align: center;
+  margin-top: 2rem;
 }
 
 /* Adjust main content when sidebar is hidden */

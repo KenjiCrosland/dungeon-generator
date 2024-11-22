@@ -37,7 +37,22 @@ It's very important to not add any extra entrances or exits to the room. The sho
 - Do not include hidden information in the 'read_aloud_description' or 'read_aloud_key_acquisition'.
 - Keep the descriptions engaging and evocative.
 
-**Please provide the response in this JSON format.**
+**Example JSON Format:**
+
+\`\`\`json
+{
+  "name": "Chamber of the Phoenix",
+  "one_sentence_summary": "A room filled with the ashes of a fallen phoenix, its rebirth key to overcoming the obstacle.",
+  "read_aloud_description": "The room is bathed in a warm, golden light that seems to emanate from the walls themselves. In the center, a stone pedestal holds a pile of shimmering ashes that occasionally spark and glow. The air is thick with the scent of charred wood and the sound of gentle crackling.",
+  "key_explanation": "The ashes belong to a phoenix that once dwelt in the dungeon, its fiery essence imbuing the ashes with the power of rebirth.",
+  "key_location": "The ashes rest on a stone pedestal in the center of the room, surrounded by a protective ward that requires a specific incantation to bypass.",
+  "key_acquisition": "Players must decipher the incantation from the runes on the walls, reciting it to dispel the ward and claim the ashes.",
+  "failure_consequences": "If players fail to acquire the ashes, the room grows colder, and the ashes crumble to dust, lost forever.",
+  "key_circumvention": "Players could attempt to bypass the ward by using a fire-based spell to burn it away, though this risks damaging the ashes.",
+  "key_acquisition_dm": "Once the players acquire the ashes, read the following aloud.",
+  "read_aloud_key_acquisition": "As you recite the incantation, the protective ward shimmers and fades, allowing you to claim the ashes."
+}
+\`\`\`
 `;
 }
 

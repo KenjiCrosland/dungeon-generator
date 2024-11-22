@@ -963,7 +963,7 @@ watch(
 <style scoped>
 .dungeon-map {
   margin: auto;
-  display: block;
+  display: flex;
   background-color: #f3f3e8;
 }
 </style>

@@ -1,3 +1,15 @@
+// Helper function to get the opposite side
+function getOppositeSide(side) {
+  const opposites = {
+    top: 'bottom',
+    bottom: 'top',
+    left: 'right',
+    right: 'left',
+  };
+  return opposites[side];
+}
+
+// Function to check if two rooms overlap
 function roomsOverlap(room1, room2) {
   const buffer = 1; // Gap of 1 tile between rooms
 
@@ -28,17 +40,6 @@ function roomsOverlap(room1, room2) {
     room1.y - actualBuffer < room2.y + room2.height &&
     room1.y + room1.height + actualBuffer > room2.y
   );
-}
-
-// Helper function to get the opposite side
-function getOppositeSide(side) {
-  const opposites = {
-    top: 'bottom',
-    bottom: 'top',
-    left: 'right',
-    right: 'left',
-  };
-  return opposites[side];
 }
 
 // Global room ID counter
@@ -154,6 +155,9 @@ function generateTree(room, existingRooms = [], depth = 0) {
         Math.random() * (maxAdditionalDoorways - minAdditionalDoorways + 1),
       ) + minAdditionalDoorways;
 
+    // Initialize a variable to keep track of locked or secret doorways
+    let hasLockedOrSecretDoor = false;
+
     // Get available sides excluding the one connected to the parent
     const availableSides = ['top', 'right', 'bottom', 'left'].filter(
       (side) => side !== oppositeSide,
@@ -170,25 +174,52 @@ function generateTree(room, existingRooms = [], depth = 0) {
       if (maxPosition > 0) {
         const position = Math.floor(Math.random() * maxPosition) + 1;
 
-        // Randomly assign a type based on weights
-        const randomValue = Math.random();
-        let type;
-
-        if (randomValue < 0.3) {
-          type = 'door'; // 30% chance for a regular door
-        } else if (randomValue < 0.45) {
-          type = 'locked-door'; // Next 15%
-        } else if (randomValue < 0.7) {
-          type = 'corridor'; // Next 25%
-        } else if (randomValue < 0.85) {
-          type = 'stairs'; // Next 15%
-        } else if (randomValue < 0.95) {
-          type = 'secret'; // Next 10% for secret doors
+        // Define available doorway types based on whether the room already has a locked or secret door
+        let availableTypes;
+        if (!hasLockedOrSecretDoor) {
+          availableTypes = [
+            { type: 'door', weight: 30 },
+            { type: 'locked-door', weight: 15 },
+            { type: 'corridor', weight: 25 },
+            { type: 'stairs', weight: 15 },
+            { type: 'secret', weight: 10 },
+            { type: 'merged', weight: 5 },
+          ];
         } else {
-          type = 'merged'; // Remaining 5%
+          // Exclude 'locked-door' and 'secret' if one already exists
+          availableTypes = [
+            { type: 'door', weight: 30 },
+            { type: 'corridor', weight: 25 },
+            { type: 'stairs', weight: 15 },
+            { type: 'merged', weight: 5 },
+          ];
         }
 
-        const doorwayData = { side, position, type };
+        // Compute total weight
+        const totalWeight = availableTypes.reduce(
+          (sum, entry) => sum + entry.weight,
+          0,
+        );
+
+        // Randomly select a type based on weights
+        const randomValue = Math.random() * totalWeight;
+        let cumulativeWeight = 0;
+        let selectedType = 'door'; // default
+
+        for (const entry of availableTypes) {
+          cumulativeWeight += entry.weight;
+          if (randomValue < cumulativeWeight) {
+            selectedType = entry.type;
+            break;
+          }
+        }
+
+        // If the selected type is 'locked-door' or 'secret', set the flag
+        if (selectedType === 'locked-door' || selectedType === 'secret') {
+          hasLockedOrSecretDoor = true;
+        }
+
+        const doorwayData = { side, position, type: selectedType };
 
         // We will assign connectedRoomId later after creating the new room
 
@@ -214,7 +245,7 @@ function generateTree(room, existingRooms = [], depth = 0) {
       // Now assign an ID to the new room
       newRoom.id = nextRoomId++;
 
-      // **Set connectedRoomId in doorways here**
+      // Set connectedRoomId in doorways here
 
       // In the parent doorway
       doorway.connectedRoomId = newRoom.id;

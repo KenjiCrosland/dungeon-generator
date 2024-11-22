@@ -1,23 +1,49 @@
 <template>
   <div>
+    <cdr-toggle-group v-if="contentArray.length > 1" v-model="activeView">
+      <cdr-toggle-button toggle-value="description">
+        Show Description
+      </cdr-toggle-button>
+      <cdr-toggle-button toggle-value="form">
+        Show Form
+      </cdr-toggle-button>
+    </cdr-toggle-group>
     <h3>{{ roomName }}</h3>
-    <div v-for="(item, index) in contentArray" :key="index">
-      <template v-if="item.format === 'read_aloud'">
-        <!-- Render read-aloud text in a box with italicized content -->
-        <div class="read-aloud-box">
-          <p><em>{{ item.content }}</em></p>
-        </div>
-      </template>
-      <template v-else-if="item.format === 'header'">
-        <!-- Render header -->
-        <h3>{{ item.content }}</h3>
-      </template>
-      <template v-else-if="item.format === 'paragraph'">
-        <!-- Render paragraph -->
-        <p>{{ item.content }}</p>
-      </template>
+    <div v-if="activeView === 'form'" class="room-form">
+      <cdr-input label="Room Name" v-model="roomFormName" :optional="true" />
+      <cdr-input label="Short Description" v-model="roomFormShortDescription" :rows="3" :optional="true" />
+      <div class="generation-button">
+        <cdr-button size="small" @click="generateDescription" modifier="dark">
+          Generate Description
+        </cdr-button>
+      </div>
     </div>
-
+    <div v-if="activeView === 'loading'">
+      <RoomSkeleton />
+    </div>
+    <div v-if="activeView === 'description'">
+      <div v-for="(item, index) in contentArray" :key="index">
+        <template v-if="item.format === 'read_aloud'">
+          <!-- Render read-aloud text in a box with italicized content -->
+          <div class="read-aloud-box">
+            <p><em>{{ item.content }}</em></p>
+          </div>
+        </template>
+        <template v-else-if="item.format === 'header'">
+          <!-- Render header -->
+          <h3>{{ item.content }}</h3>
+        </template>
+        <template v-else-if="item.format === 'paragraph'">
+          <!-- Render paragraph -->
+          <p>{{ item.content }}</p>
+        </template>
+      </div>
+      <div class="generation-button">
+        <cdr-button size="small" @click="generateDescription" modifier="dark">
+          Re-Generate Description
+        </cdr-button>
+      </div>
+    </div>
     <div v-if="!dungeonStore.isMapSidebarCollapsed && room && room.doorways.length">
       <h3>Connecting Rooms:</h3>
       <cdr-list class="connecting-room-list">
@@ -28,18 +54,13 @@
         </li>
       </cdr-list>
     </div>
-
-    <div class="generation-button">
-      <cdr-button size="small" @click="generateDescription" modifier="dark">
-        {{ contentArray.length > 1 ? 'Re-generate Description' : 'Generate Description' }}
-      </cdr-button>
-    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, watch, onMounted, computed } from 'vue';
-import { CdrButton, CdrList } from '@rei/cedar';
+import { CdrButton, CdrList, CdrToggleGroup, CdrToggleButton, CdrInput } from '@rei/cedar';
+import RoomSkeleton from './skeletons/RoomSkeleton.vue';
 import { useDungeonStore } from '../stores/dungeon-store.mjs';
 import { useRoomDescription } from '../composables/useRoomDescription.js';
 
@@ -48,7 +69,10 @@ const { generateRoomDescription } = useRoomDescription();
 
 const contentArray = ref([]);
 const roomName = ref('');
+const roomFormName = ref('');
+const roomFormShortDescription = ref('');
 const room = ref(null);
+const activeView = ref('description');
 
 // **Define getRoomName Method**
 function getRoomName(roomId) {
@@ -79,6 +103,13 @@ function loadRoomData(roomId) {
       { format: 'paragraph', content: 'No description available.' },
     ];
     roomName.value = `${roomId}. ${room.value.name || `Room ${roomId}`}`;
+    roomFormName.value = room.value.name || '';
+    roomFormShortDescription.value = room.value.oneSentenceSummary || '';
+    if (contentArray.value.length > 1) {
+      activeView.value = 'description';
+    } else {
+      activeView.value = 'form';
+    }
   } else {
     contentArray.value = [{ format: 'paragraph', content: 'No description available.' }];
     roomName.value = `Room ${roomId}`;
@@ -86,15 +117,18 @@ function loadRoomData(roomId) {
 }
 
 async function generateDescription() {
-  await generateRoomDescription(dungeonStore.currentDungeon, dungeonStore.selectedRoomId);
+  activeView.value = 'loading';
+  await generateRoomDescription(dungeonStore.currentDungeon, dungeonStore.selectedRoomId, roomFormName.value, roomFormShortDescription.value);
+  activeView.value = 'description';
   dungeonStore.saveDungeons();
   loadRoomData(dungeonStore.selectedRoomId);
 }
 
 onMounted(() => {
-  if (dungeonStore.selectedRoomId !== null) {
-    loadRoomData(dungeonStore.selectedRoomId);
+  if (dungeonStore.selectedRoomId === null) {
+    dungeonStore.selectedRoomId = dungeonStore.currentDungeon.rooms[0].id;
   }
+  loadRoomData(dungeonStore.selectedRoomId);
 });
 </script>
 
@@ -133,5 +167,18 @@ onMounted(() => {
 
 .connecting-room {
   list-style: none;
+}
+
+.cdr-toggle-group--large_15-2-0 .cdr-toggle-button__item_15-2-0 {
+  padding: 0;
+}
+
+.room-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  background-color: #f3f3e8;
+  border-radius: 4px;
+  padding: 1rem;
 }
 </style>

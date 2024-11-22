@@ -163,6 +163,12 @@ export function addDungeonDetails(dungeonData) {
       const numConnections = room.doorways.length;
       const roomSize = room.size;
 
+      // Check if room only has one doorway and it's a secret
+      if (numConnections === 1 && room.doorways[0].type === 'secret') {
+        room.roomType = 'secret';
+        return; // Exit early as we've assigned the room type
+      }
+
       // Determine adjacent room types
       let adjacentRoomTypes = new Set();
       graph[room.id].forEach((edge) => {

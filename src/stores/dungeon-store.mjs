@@ -9,6 +9,12 @@ import {
   dungeonOverviewPrompt,
   validateDungeonOverview,
 } from '../prompts/dungeon-overview.mjs';
+import {
+  createDungeonNPCPrompt,
+  createDungeonNPCRelationshipsPrompt,
+  validateDungeonNPCResponse,
+  validateDungeonNPCRelationshipsResponse,
+} from '../prompts/dungeon-npcs.mjs';
 import { generateGptResponse } from '../util/open-ai.mjs';
 
 export const useDungeonStore = defineStore('dungeon', () => {
@@ -20,6 +26,10 @@ export const useDungeonStore = defineStore('dungeon', () => {
   const lastClickedRoomX = ref(null);
   const isMapSidebarCollapsed = ref(true);
   const activeTabIndex = ref(0);
+  // NPC-related state
+  const npcName = ref('');
+  const npcShortDescription = ref('');
+  const currentlyLoadingNPC = ref(false);
 
   // Getters
   const currentDungeon = computed(() => {
@@ -48,10 +58,11 @@ export const useDungeonStore = defineStore('dungeon', () => {
   }
 
   function createNewDungeon() {
-    form.adjective = '';
-    form.setting_type = '';
-    form.place_name = '';
-    form.place_lore = '';
+    form.value.adjective = '';
+    form.value.setting_type = '';
+    form.value.place_name = '';
+    form.value.place_lore = '';
+    form.value.difficulty = '';
     currentDungeonId.value = null;
   }
 
@@ -77,6 +88,7 @@ export const useDungeonStore = defineStore('dungeon', () => {
     setting_type: '',
     place_name: '',
     place_lore: '',
+    difficulty: '',
   });
 
   async function generateDungeonOverview() {
@@ -87,8 +99,8 @@ export const useDungeonStore = defineStore('dungeon', () => {
         form.value.setting_type,
         form.value.place_name,
         form.value.place_lore,
+        form.value.difficulty,
       );
-
       const response = await generateGptResponse(
         prompt,
         validateDungeonOverview,
@@ -97,18 +109,34 @@ export const useDungeonStore = defineStore('dungeon', () => {
 
       // Create a new dungeon object
       const newDungeon = {
-        id: Date.now(), // Simple unique ID using timestamp
+        id: Date.now(),
         dungeonOverview: overview,
         rooms: null,
         roomDescriptions: null,
         roomNames: [],
+        npcs: [], // Initialize NPCs array
       };
+
+      // Map npc_list to npcs array
+      if (overview.npc_list) {
+        newDungeon.npcs = overview.npc_list.map((npc) => ({
+          name: npc.name,
+          short_description: npc.description,
+          opened: false, // Initialize 'opened' property
+        }));
+      }
 
       // Add the new dungeon to the dungeons array
       dungeons.value.push(newDungeon);
       currentDungeonId.value = newDungeon.id;
 
       loadingOverview.value = false;
+      form.value.adjective = '';
+      form.value.setting_type = '';
+      form.value.place_name = '';
+      form.value.place_lore = '';
+      form.value.difficulty = '';
+
       saveDungeons();
     } catch (error) {
       loadingOverview.value = false;
@@ -127,7 +155,6 @@ export const useDungeonStore = defineStore('dungeon', () => {
 
     // Generate room descriptions
     const roomDescriptions = createRoomDescriptions(dungeonRoomArray);
-    console.log('Room Descriptions:', roomDescriptions);
 
     // Assign descriptions to rooms
     dungeonRoomArray.forEach((room, index) => {
@@ -147,7 +174,7 @@ export const useDungeonStore = defineStore('dungeon', () => {
     const room = currentDungeon.value.rooms.find((room) => room.id === roomId);
     if (room) {
       room.contentArray = contentArray;
-      room.name = name; // or room.roomName = name
+      room.name = name;
       currentDungeon.value.roomNames =
         currentDungeon.value.rooms.map((room) => room.name).filter(Boolean) ||
         [];
@@ -159,6 +186,110 @@ export const useDungeonStore = defineStore('dungeon', () => {
     }
   }
 
+  function getDungeonOverviewText(overviewObject) {
+    if (!overviewObject) {
+      return '';
+    }
+    return Object.values(overviewObject)
+      .filter((value) => typeof value === 'string')
+      .join('\n');
+  }
+
+  function deleteNPC(npcIndex) {
+    if (!currentDungeon.value) return;
+    currentDungeon.value.npcs.splice(npcIndex, 1);
+    saveDungeons();
+  }
+
+  async function generateDungeonNPC(npcIndex) {
+    if (!currentDungeon.value) {
+      console.error('No dungeon selected');
+      return;
+    }
+
+    try {
+      currentlyLoadingNPC.value = true;
+
+      const npc = currentDungeon.value.npcs[npcIndex];
+      if (!npc) {
+        console.error('NPC not found');
+        currentlyLoadingNPC.value = false;
+        return;
+      }
+
+      const npcName = npc.name;
+      const npcShortDescription = npc.short_description;
+
+      const dungeonOverviewText = getDungeonOverviewText(
+        currentDungeon.value.dungeonOverview,
+      );
+
+      const prompt = createDungeonNPCPrompt(
+        npcName,
+        dungeonOverviewText,
+        npcShortDescription,
+      );
+
+      // Generate the NPC description
+      const npcResponse = await generateGptResponse(
+        prompt,
+        validateDungeonNPCResponse,
+      );
+      const npcData = JSON.parse(npcResponse);
+
+      // Generate relationships and roleplaying tips
+      const relationshipsPrompt = createDungeonNPCRelationshipsPrompt(
+        npcName,
+        npcResponse,
+      );
+      const relationshipsResponse = await generateGptResponse(
+        relationshipsPrompt,
+        validateDungeonNPCRelationshipsResponse,
+      );
+      const relationshipsData = JSON.parse(relationshipsResponse);
+
+      // Combine NPC data
+      const completeNPC = { ...npc, ...npcData, ...relationshipsData };
+      completeNPC.opened = true; // Open the accordion after generating full description
+
+      // Update the NPC in the current dungeon's NPC list
+      currentDungeon.value.npcs.splice(npcIndex, 1, completeNPC);
+
+      currentlyLoadingNPC.value = false;
+
+      // Save the updated dungeons data
+      saveDungeons();
+    } catch (error) {
+      console.error('Error generating dungeon NPC:', error);
+      currentlyLoadingNPC.value = false;
+    }
+  }
+
+  function addNPC() {
+    if (!currentDungeon.value) {
+      console.error('No dungeon selected');
+      return;
+    }
+
+    const name = npcName.value || 'Unnamed NPC';
+    const shortDescription = npcShortDescription.value;
+    if (!shortDescription) {
+      console.error('NPC short description is required');
+      return;
+    }
+
+    currentDungeon.value.npcs.push({
+      name,
+      short_description: shortDescription,
+      opened: false, // Initialize 'opened' property
+    });
+
+    npcName.value = '';
+    npcShortDescription.value = '';
+
+    saveDungeons();
+  }
+
   return {
     // State
     dungeons,
@@ -168,6 +299,9 @@ export const useDungeonStore = defineStore('dungeon', () => {
     lastClickedRoomX,
     isMapSidebarCollapsed,
     activeTabIndex,
+    npcName,
+    npcShortDescription,
+    currentlyLoadingNPC,
 
     // Getters
     currentDungeon,
@@ -179,6 +313,9 @@ export const useDungeonStore = defineStore('dungeon', () => {
     createNewDungeon,
     deleteDungeon,
     generateDungeonOverview,
+    generateDungeonNPC,
+    deleteNPC,
+    addNPC,
     generateMap,
     handleUpdateRoomDescription,
 

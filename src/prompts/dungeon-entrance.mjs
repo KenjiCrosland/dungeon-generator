@@ -1,12 +1,15 @@
 // entrance-room.js
 
-export function generateEntrancePrompt(dungeonOverview, shortDescription) {
+export function generateEntrancePrompt(
+  dungeonOverview,
+  shortDescription,
+  formRoomSummary,
+) {
   return `
 Using the dungeon overview below, describe the entrance to the dungeon in detail. Be sure to address the following:
 
 Dungeon Overview:
 ${dungeonOverview}
-
 
 Below are the guidelines for each sentence in the JSON response:
 
@@ -53,6 +56,12 @@ Introduce unusual objects, guardians, characters, or features in the room that p
 "A kobold has been chained to the wall, its eyes wide with fear and pain."
 "There appears to be a sleeping face carved into the stone wall, its expression serene and peaceful."
 "A rusty automaton stands in the corner, its gears grinding and whirring as it moves."
+
+${
+  formRoomSummary
+    ? `This is a short description of the entrance room: ${formRoomSummary}`
+    : ''
+}
 
 Return the description in JSON format with the following keys:
 {
