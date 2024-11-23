@@ -200,7 +200,8 @@
             </cdr-accordion>
           </cdr-accordion-group>
 
-          <!-- <h3>Add a New NPC</h3>
+          <!-- Disabled for now. Will be available later 
+          <h3>Add a New NPC</h3>
           <cdr-input v-model="dungeonStore.npcName" label="NPC Name">
             <template #helper-text-bottom>
               Enter the name of the NPC.
@@ -369,12 +370,16 @@ function handleRoomClick({ roomId, x }) {
 
   if (dungeonStore.isMapSidebarCollapsed) {
     dungeonStore.isMapSidebarCollapsed = false;
-    // No need to adjust the map scroll position here; the watcher will handle it
+    // Wait until the DOM updates and transition completes
+    setTimeout(() => {
+      adjustMapScrollPosition(x);
+    }, 300); // Match the CSS transition duration
   } else {
     // Sidebar is already expanded; adjust the map scroll position immediately
     adjustMapScrollPosition(x);
   }
 }
+
 
 function handleMapClick() {
   // Collapse the map sidebar if it's not already collapsed
@@ -384,27 +389,22 @@ function handleMapClick() {
 }
 
 function adjustMapScrollPosition(roomX) {
-  const sidebarWidth = 450; // Adjust based on your actual sidebar width
-  const padding = 20; // Optional padding to avoid the room being right at the edge
-
   if (mapWrapper.value) {
     // Get the current scroll position and visible area
     const scrollLeft = mapWrapper.value.scrollLeft;
     const visibleWidth = mapWrapper.value.clientWidth;
 
-    // Calculate the position where the sidebar starts in the map
-    const sidebarStart = scrollLeft + visibleWidth - sidebarWidth;
+    // Calculate the new scroll position to center the clicked room
+    const targetScrollLeft = roomX - visibleWidth / 2;
 
-    // Check if the room is within the area that will be covered by the sidebar
-    if (roomX > sidebarStart) {
-      // Calculate how much we need to scroll to bring the room into view
-      const scrollAmount = roomX - (scrollLeft + visibleWidth - sidebarWidth) + padding;
-
-      // Scroll the map wrapper left by the calculated amount
-      mapWrapper.value.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-    }
+    // Adjust the scroll position
+    mapWrapper.value.scrollTo({
+      left: targetScrollLeft,
+      behavior: 'smooth',
+    });
   }
 }
+
 </script>
 
 <style scoped lang="scss">
@@ -420,35 +420,33 @@ function adjustMapScrollPosition(roomX) {
   flex-direction: row;
   flex-wrap: nowrap;
   overflow: hidden;
-  position: relative;
   min-height: 75vh;
-  /* Add position relative if the sidebar is absolutely positioned */
 }
 
 .dungeon-map-wrapper {
   background-color: #fafaf6;
-  overflow-x: scroll;
-  flex: 1;
-  display: flex;
-  justify-content: center;
+  overflow-x: auto;
+  flex: 1 1 auto;
 }
 
 .dungeon-map-container {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  /* Or set a specific width if needed */
+  width: max-content;
+  margin: 0 auto;
 }
 
 .map-sidebar {
-  position: absolute;
-  right: 0;
-  top: 0;
-  min-height: 75vh;
   width: 450px;
-  flex: 0 0 auto;
-  /* Sidebar doesn't shrink */
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+}
+
+.map-sidebar.collapsed {
+  transform: translateX(100%);
+}
+
+.generate-button-container {
+  text-align: center;
+  margin-top: 2rem;
 }
 
 .selected-room-description,
