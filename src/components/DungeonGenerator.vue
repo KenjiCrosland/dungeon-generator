@@ -144,29 +144,40 @@
             <p>Generate a Map for your dungeon</p>
           </div>
         </TabPanel>
-        <!-- NPCs TabPanel -->
+
         <TabPanel label="NPCs">
           <h2>Notable NPCs</h2>
 
-          <!-- NPC List -->
           <cdr-accordion-group v-if="dungeonStore.currentDungeon && dungeonStore.currentDungeon.npcs">
             <cdr-accordion v-for="(npc, index) in dungeonStore.currentDungeon.npcs" :key="index" :id="'npc-' + index"
               :opened="npc.opened" @accordion-toggle="npc.opened = !npc.opened" level="2">
               <template #label>
                 {{ npc.name }}
               </template>
+              <cdr-tooltip id="tooltip-example" position="left" class="delete-button">
+                <template #trigger>
+                  <cdr-button size="small" :icon-only="true" :with-background="true"
+                    @click="dungeonStore.deleteNPC(index)">
+                    <template #icon>
+                      <icon-x-sm />
+                    </template>
+                  </cdr-button>
+                </template>
+                <div>
+                  Delete NPC
+                </div>
+              </cdr-tooltip>
               <div>
-                <p><strong>Short Description:</strong> {{ npc.short_description }}</p>
 
-                <!-- If NPC has full details, display them -->
+                <h2>{{ npc.name }}</h2>
                 <div v-if="npc.description_of_position">
-                  <p><strong>Description of Position:</strong> {{ npc.description_of_position }}</p>
-                  <p><strong>Current Location:</strong> {{ npc.current_location }}</p>
-                  <p><strong>Distinctive Features or Mannerisms:</strong> {{ npc.distinctive_features_or_mannerisms }}
-                  </p>
-                  <p><strong>Character Secret:</strong> {{ npc.character_secret }}</p>
-                  <h3>Read-Aloud Description</h3>
-                  <p>{{ npc.read_aloud_description }}</p>
+                  <div class="read-aloud-box">
+                    <p>{{ npc.read_aloud_description }}</p>
+                  </div>
+                  <p>{{ npc.description_of_position }}</p>
+                  <p>{{ npc.current_location }}</p>
+                  <p>{{ npc.distinctive_features_or_mannerisms }}</p>
+                  <p>{{ npc.character_secret }}</p>
                   <h3>Relationships</h3>
                   <div v-for="(relationship, relatedNpcName) in npc.relationships" :key="relatedNpcName">
                     <p><strong>{{ relatedNpcName }}:</strong> {{ relationship }}</p>
@@ -175,24 +186,21 @@
                   <p>{{ npc.roleplaying_tips }}</p>
                 </div>
 
-                <!-- If NPC does not have full details, display button to generate them -->
-                <div v-else>
+                <div v-if="!npc.description_of_position && !dungeonStore.currentlyLoadingNPC">
+                  <p>{{ npc.short_description }}</p>
                   <cdr-button @click="dungeonStore.generateDungeonNPC(index)"
                     :disabled="dungeonStore.currentlyLoadingNPC">
                     Generate Full Description
                   </cdr-button>
                 </div>
-
-                <!-- Delete NPC Button -->
-                <cdr-button @click="dungeonStore.deleteNPC(index)">
-                  Delete NPC
-                </cdr-button>
+                <div v-if="dungeonStore.currentlyLoadingNPC">
+                  <NPCSkeleton />
+                </div>
               </div>
             </cdr-accordion>
           </cdr-accordion-group>
 
-          <!-- Form to Add New NPCs -->
-          <h3>Add a New NPC</h3>
+          <!-- <h3>Add a New NPC</h3>
           <cdr-input v-model="dungeonStore.npcName" label="NPC Name">
             <template #helper-text-bottom>
               Enter the name of the NPC.
@@ -205,11 +213,8 @@
           </cdr-input>
           <cdr-button @click="dungeonStore.addNPC()" :disabled="dungeonStore.currentlyLoadingNPC">
             Add NPC
-          </cdr-button>
+          </cdr-button> -->
         </TabPanel>
-
-
-
       </Tabs>
     </div>
   </div>
@@ -222,16 +227,19 @@ import Tabs from './tabs/Tabs.vue';
 import TabPanel from './tabs/TabPanel.vue';
 import RoomDescription from './RoomDescription.vue';
 import OverviewSkeleton from './skeletons/OverviewSkeleton.vue';
+import NPCSkeleton from './skeletons/NPCSkeleton.vue';
 import MapSidebar from './MapSidebar.vue';
 import {
   CdrInput,
   CdrButton,
+  CdrTooltip,
   CdrLink,
   CdrSelect,
   CdrAccordionGroup,
   CdrAccordion,
   CdrFormGroup,
   IconNavigationMenu,
+  IconXSm,
 } from '@rei/cedar';
 
 import { useDungeonStore } from '../stores/dungeon-store.mjs';
@@ -584,6 +592,20 @@ function adjustMapScrollPosition(roomX) {
       margin-bottom: 1rem;
     }
   }
+}
+
+.read-aloud-box {
+  background-color: $cdr-color-background-secondary;
+  color: $cdr-color-text-secondary;
+  padding: 1rem 2rem;
+  font-style: italic;
+}
+
+.delete-button {
+  position: absolute;
+  top: 65px;
+  right: 15px;
+  z-index: 1;
 }
 
 .generate-button-container {

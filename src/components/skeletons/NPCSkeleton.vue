@@ -77,7 +77,7 @@ import { CdrSkeleton, CdrSkeletonBone } from "@rei/cedar";
 </script>
 
 <style scoped lang="scss">
-@import '@rei/cdr-tokens/dist/scss/cdr-tokens.scss';
+@import '@rei/cdr-tokens/dist/rei-dot-com/scss/cdr-tokens.scss';
 
 .focus-text {
   background-color: $cdr-color-background-secondary;

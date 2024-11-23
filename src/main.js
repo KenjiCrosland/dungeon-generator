@@ -12,6 +12,7 @@ import '@rei/cedar/dist/style/cdr-button.css';
 import '@rei/cedar/dist/style/cdr-link.css';
 import '@rei/cedar/dist/style/cdr-list.css';
 import '@rei/cedar/dist/style/cdr-select.css';
+import '@rei/cedar/dist/style/cdr-tooltip.css';
 import '@rei/cedar/dist/style/cdr-toggle-group.css';
 import '@rei/cedar/dist/style/cdr-toggle-button.css';
 import '@rei/cedar/dist/style/cdr-accordion.css';
