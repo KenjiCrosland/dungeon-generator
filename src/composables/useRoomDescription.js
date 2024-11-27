@@ -53,6 +53,11 @@ import {
   processSecretDoorResponse,
 } from '../prompts/secret-door.mjs';
 import {
+  generateLockedRoomPrompt,
+  validateLockedRoomResponse,
+  processLockedRoomResponse,
+} from '../prompts/locked-room.mjs';
+import {
   generateObstaclePrompt,
   validateObstacleResponse,
   processObstacleResponse,
@@ -209,6 +214,28 @@ export function useRoomDescription() {
     );
     const roomDescription = JSON.parse(response);
     const contentArray = processSecretRoomResponse(roomDescription);
+    return { roomDescription, contentArray };
+  }
+
+  async function handleLockedRoom({
+    room,
+    currentDungeon,
+    dungeonOverview,
+    shortDescription,
+    connectedRoomsInfo,
+  }) {
+    const prompt = generateLockedRoomPrompt(
+      dungeonOverview,
+      shortDescription,
+      connectedRoomsInfo,
+    );
+    console.log('Prompt:', prompt);
+    const response = await generateGptResponse(
+      prompt,
+      validateLockedRoomResponse,
+    );
+    const roomDescription = JSON.parse(response);
+    const contentArray = processLockedRoomResponse(roomDescription);
     return { roomDescription, contentArray };
   }
 

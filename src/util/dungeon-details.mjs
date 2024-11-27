@@ -1,17 +1,20 @@
 export function addDungeonDetails(dungeonData) {
+  // Extract the rooms array
+  const roomsArray = dungeonData.rooms || dungeonData;
+
   // Helper functions
 
-  function buildRoomMap(dungeonData) {
+  function buildRoomMap(roomsArray) {
     let rooms = {};
-    dungeonData.forEach((room) => {
+    roomsArray.forEach((room) => {
       rooms[room.id] = room;
     });
     return rooms;
   }
 
-  function buildGraph(dungeonData) {
+  function buildGraph(roomsArray) {
     let graph = {};
-    dungeonData.forEach((room) => {
+    roomsArray.forEach((room) => {
       let roomId = room.id;
       if (!graph[roomId]) graph[roomId] = [];
       room.doorways.forEach((doorway) => {
@@ -36,9 +39,9 @@ export function addDungeonDetails(dungeonData) {
     return graph;
   }
 
-  function collectLockedDoors(dungeonData) {
+  function collectLockedDoors(roomsArray) {
     let lockedDoors = [];
-    dungeonData.forEach((room) => {
+    roomsArray.forEach((room) => {
       let roomId = room.id;
       room.doorways.forEach((doorway) => {
         if (
@@ -121,53 +124,55 @@ export function addDungeonDetails(dungeonData) {
     return null;
   }
 
-  function assignRoomTypes(dungeonData, entranceRoomId, graph) {
-    let guardRoomCount = 0;
-    let storageRoomCount = 0;
-
-    // Set maximum guard and storage rooms based on total rofoms
-    const totalRooms = dungeonData.length;
-    const maxGuardRooms = totalRooms >= 15 ? 2 : 1;
-    const maxStorageRooms = totalRooms >= 15 ? 2 : 1;
-
-    // First, mark the special rooms
-    dungeonData.forEach((room) => {
-      // Assign entrance room
-      if (room.id === entranceRoomId) {
-        room.roomType = 'entrance';
+  /**
+   * Assigns room types to each room in the dungeon based on the dungeon's structure.
+   *
+   * @param {Array} roomsArray - The rooms array.
+   * @param {number} entranceRoomId - The ID of the entrance room.
+   * @param {Object} graph - The dungeon graph.
+   * @param {Object} rooms - The map of rooms.
+   */
+  function assignRoomTypes(roomsArray, entranceRoomId, graph, rooms) {
+    // Reset room types only if not already assigned
+    roomsArray.forEach((room) => {
+      if (!room.roomType) {
+        room.roomType = null;
       }
-      // Assign purpose rooms (e.g., key rooms), but do not overwrite the entrance
-      else if (room.hasKeyForRoomId && room.roomType !== 'entrance') {
-        room.roomType = 'purpose';
-      }
-
-      // Parse and add room size to the room object
       room.size = parseRoomSize(room.shortDescription);
     });
 
-    // Ensure no purpose room connects directly to the entrance
-    graph[entranceRoomId].forEach((edge) => {
-      let connectedRoom = rooms[edge.to];
-      if (connectedRoom.roomType === 'purpose') {
-        connectedRoom.roomType = null; // Reset to be reassigned
+    // Assign entrance room
+    rooms[entranceRoomId].roomType = 'entrance';
+
+    // Assign 'secret' rooms (rooms with only one secret doorway)
+    roomsArray.forEach((room) => {
+      const numConnections = room.doorways.length;
+      if (numConnections === 1 && room.doorways[0].type === 'secret') {
+        room.roomType = 'secret';
       }
     });
 
-    // Now, assign room types for the rest
-    dungeonData.forEach((room) => {
-      // Skip rooms that already have a roomType
-      if (room.roomType) {
-        return;
+    // Assign 'locked' rooms (rooms with only one locked doorway)
+    roomsArray.forEach((room) => {
+      const numConnections = room.doorways.length;
+      if (numConnections === 1 && room.doorways[0].type === 'locked-door') {
+        room.roomType = 'locked';
       }
+    });
+
+    // Assign 'connecting' rooms (rooms with 3 or more connections)
+    roomsArray.forEach((room) => {
+      if (!room.roomType && room.doorways.length >= 3) {
+        room.roomType = 'connecting';
+      }
+    });
+
+    // Now assign room types for the rest
+    roomsArray.forEach((room) => {
+      if (room.roomType) return; // Skip already assigned rooms
 
       const numConnections = room.doorways.length;
       const roomSize = room.size;
-
-      // Check if room only has one doorway and it's a secret
-      if (numConnections === 1 && room.doorways[0].type === 'secret') {
-        room.roomType = 'secret';
-        return; // Exit early as we've assigned the room type
-      }
 
       // Determine adjacent room types
       let adjacentRoomTypes = new Set();
@@ -178,66 +183,46 @@ export function addDungeonDetails(dungeonData) {
         }
       });
 
-      // Decide whether to assign it as a purpose room
-      let purposeClusterSize = 0;
-      let livingClusterSize = 0;
+      // Initialize probabilities
+      let purposeProb = 0.3;
+      let livingProb = 0.3;
+      let connectingProb = 0;
+      let setbackProb = 0.05;
 
-      adjacentRoomTypes.forEach((type) => {
-        if (type === 'purpose') {
-          purposeClusterSize++;
-        }
-        if (type === 'living') {
-          livingClusterSize++;
-        }
-      });
-
-      // Adjust chance based on cluster sizes
-      let purposeChance = 0.2;
-      let livingChance = 0.5;
-
-      if (purposeClusterSize === 1) {
-        purposeChance = 0.6;
-      } else if (purposeClusterSize >= 2) {
-        purposeChance = 0.2;
+      // Adjust probabilities based on adjacency
+      if (adjacentRoomTypes.has('purpose')) {
+        purposeProb += 0.2;
+      }
+      if (adjacentRoomTypes.has('living')) {
+        livingProb += 0.2;
+      }
+      if (adjacentRoomTypes.has('connecting')) {
+        connectingProb += 0.1;
       }
 
-      if (livingClusterSize === 1) {
-        livingChance = 0.8;
-      } else if (livingClusterSize >= 2) {
-        livingChance = 0.3;
+      // Adjust probabilities based on room characteristics
+      if (roomSize === 'large') {
+        purposeProb += 0.1;
+      }
+      if (numConnections === 1) {
+        livingProb += 0.1;
       }
 
-      // Ensure the room does not connect directly to the entrance if it's a purpose room
-      let connectsToEntrance = graph[room.id].some(
-        (edge) => edge.to === entranceRoomId,
-      );
+      // Normalize probabilities
+      const totalProb = purposeProb + livingProb + setbackProb;
+      purposeProb /= totalProb;
+      livingProb /= totalProb;
+      setbackProb /= totalProb;
 
-      // Start assigning room types based on updated logic
-      if (!connectsToEntrance && Math.random() < purposeChance) {
+      // Randomly assign room type based on adjusted probabilities
+      const rand = Math.random();
+
+      if (rand < purposeProb) {
         room.roomType = 'purpose';
-      } else if (Math.random() < livingChance) {
+      } else if (rand < purposeProb + livingProb) {
         room.roomType = 'living';
-      } else if (
-        numConnections <= 2 &&
-        guardRoomCount < maxGuardRooms &&
-        Math.random() < 0.3
-      ) {
-        room.roomType = 'guard';
-        guardRoomCount++;
-      } else if (
-        numConnections === 1 &&
-        storageRoomCount < maxStorageRooms &&
-        roomSize === 'small' && // Only assign storage rooms to small rooms
-        Math.random() < 0.5
-      ) {
-        room.roomType = 'storage';
-        storageRoomCount++;
-      } else if (numConnections >= 3) {
-        // Assign connecting room only if the room has 3 or more connections
-        room.roomType = 'connecting';
       } else {
-        // Assign as 'misc' for rooms with 1 or 2 connections not assigned above
-        room.roomType = 'misc';
+        room.roomType = 'purpose'; // Default to 'purpose' if other probabilities are low
       }
     });
   }
@@ -298,9 +283,11 @@ export function addDungeonDetails(dungeonData) {
         ) {
           // Skip traversal through the main locked door
           if (
-            (edge.from === mainLockedDoor.from &&
+            mainLockedDoor &&
+            ((edge.from === mainLockedDoor.from &&
               edge.to === mainLockedDoor.to) ||
-            (edge.from === mainLockedDoor.to && edge.to === mainLockedDoor.from)
+              (edge.from === mainLockedDoor.to &&
+                edge.to === mainLockedDoor.from))
           ) {
             return;
           }
@@ -341,9 +328,11 @@ export function addDungeonDetails(dungeonData) {
         ) {
           // Skip traversal through the main locked door
           if (
-            (edge.from === mainLockedDoor.from &&
+            mainLockedDoor &&
+            ((edge.from === mainLockedDoor.from &&
               edge.to === mainLockedDoor.to) ||
-            (edge.from === mainLockedDoor.to && edge.to === mainLockedDoor.from)
+              (edge.from === mainLockedDoor.to &&
+                edge.to === mainLockedDoor.from))
           ) {
             return;
           }
@@ -363,12 +352,12 @@ export function addDungeonDetails(dungeonData) {
   }
 
   // Start of main function
-  let rooms = buildRoomMap(dungeonData);
-  let graph = buildGraph(dungeonData);
-  let lockedDoors = collectLockedDoors(dungeonData);
+  let rooms = buildRoomMap(roomsArray);
+  let graph = buildGraph(roomsArray);
+  let lockedDoors = collectLockedDoors(roomsArray);
   let mainLockedDoor = identifyMainLockedDoor(lockedDoors, graph);
 
-  let entranceRoomId = dungeonData[0].id; // Assuming the first room is the entrance
+  let entranceRoomId = roomsArray[0].id; // Assuming the first room is the entrance
 
   if (mainLockedDoor) {
     // Add requiresKey and hasKeyInRoomId to the room with the locked door
@@ -390,8 +379,7 @@ export function addDungeonDetails(dungeonData) {
       mainLockedDoor.to,
       mainLockedDoor.from,
       graph,
-      rooms,
-      roomWithLockedDoor.id,
+      mainLockedDoor,
     );
 
     // Find the furthest leaf node in a different direction for the key
@@ -399,11 +387,10 @@ export function addDungeonDetails(dungeonData) {
       entranceRoomId,
       roomsBeyondLockedDoor,
       graph,
-      rooms,
-      roomWithLockedDoor.id,
+      mainLockedDoor,
     );
 
-    // **Modify this part to handle the case when no suitable room is found**
+    // Modify this part to handle the case when no suitable room is found
     if (roomWithKeyId && roomWithKeyId !== entranceRoomId) {
       // Update the room with the key
       let roomWithKey = rooms[roomWithKeyId];
@@ -417,7 +404,6 @@ export function addDungeonDetails(dungeonData) {
         mainLockedDoor.to,
         new Set([mainLockedDoor.from]),
         graph,
-        rooms,
         null, // No need to exclude doors here
       );
       assignBossRoom(bossRoomId, rooms);
@@ -430,19 +416,18 @@ export function addDungeonDetails(dungeonData) {
       );
       assignSetbackRoom(pathToKeyRoom, rooms);
     } else {
-      // **No suitable room found for the key; skip key and obstacle assignment**
-      // **Reset the requiresKey and hasKeyInRoomId properties**
+      // No suitable room found for the key; skip key and obstacle assignment
+      // Reset the requiresKey and hasKeyInRoomId properties
       delete roomWithLockedDoor.requiresKey;
       delete roomWithLockedDoor.hasKeyInRoomId;
       delete mainLockedDoor.doorway.requiresKey;
       delete roomWithLockedDoor.keyDoor;
 
-      // **Assign the boss room without considering the locked door**
+      // Assign the boss room without considering the locked door
       let bossRoomId = findFurthestLeafNode(
         entranceRoomId,
         new Set(),
         graph,
-        rooms,
         null,
       );
       assignBossRoom(bossRoomId, rooms);
@@ -459,7 +444,6 @@ export function addDungeonDetails(dungeonData) {
       entranceRoomId,
       new Set(),
       graph,
-      rooms,
       null,
     );
 
@@ -472,10 +456,15 @@ export function addDungeonDetails(dungeonData) {
   }
 
   // Assign room types
-  assignRoomTypes(dungeonData, entranceRoomId, graph);
+  assignRoomTypes(roomsArray, entranceRoomId, graph, rooms);
 
   // Return the modified dungeon data
-  return dungeonData;
+  if (dungeonData.rooms) {
+    dungeonData.rooms = roomsArray;
+    return dungeonData;
+  } else {
+    return roomsArray;
+  }
 }
 
 // Helper function to assign setback room
@@ -489,5 +478,7 @@ function assignSetbackRoom(path, rooms) {
   let setbackRoomId =
     potentialSetbackRooms[Math.floor(potentialSetbackRooms.length / 2)];
 
-  rooms[setbackRoomId].roomType = 'setback';
+  if (rooms[setbackRoomId]) {
+    rooms[setbackRoomId].roomType = 'setback';
+  }
 }
