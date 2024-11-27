@@ -12,6 +12,12 @@
     <div v-if="activeView === 'form'" class="room-form">
       <cdr-input label="Room Name" v-model="roomFormName" :optional="true" />
       <cdr-input label="Short Description" v-model="roomFormShortDescription" :rows="3" :optional="true" />
+      <cdr-select label="Include NPC in Room" v-model="selectedNPCName" :options="npcOptions" prompt="Select an NPC"
+        :optional="true">
+        <template #helper-text-bottom>
+          Select an NPC to be present in this room.
+        </template>
+      </cdr-select>
       <div class="generation-button">
         <cdr-button size="small" @click="generateDescription" modifier="dark">
           Generate Description
@@ -59,7 +65,7 @@
 
 <script setup>
 import { ref, watch, onMounted, computed } from 'vue';
-import { CdrButton, CdrList, CdrToggleGroup, CdrToggleButton, CdrInput } from '@rei/cedar';
+import { CdrButton, CdrList, CdrToggleGroup, CdrToggleButton, CdrInput, CdrSelect } from '@rei/cedar';
 import RoomSkeleton from './skeletons/RoomSkeleton.vue';
 import { useDungeonStore } from '../stores/dungeon-store.mjs';
 import { useRoomDescription } from '../composables/useRoomDescription.js';
@@ -71,6 +77,13 @@ const contentArray = ref([]);
 const roomName = ref('');
 const roomFormName = ref('');
 const roomFormShortDescription = ref('');
+const selectedNPCName = ref(null);
+const npcOptions = computed(() => {
+  if (dungeonStore.currentDungeon && dungeonStore.currentDungeon.npcs) {
+    return ['None', ...dungeonStore.currentDungeon.npcs.map((npc) => npc.name)];
+  }
+  return ['None'];
+});
 const room = ref(null);
 const activeView = ref('description');
 
@@ -117,12 +130,50 @@ function loadRoomData(roomId) {
 }
 
 async function generateDescription() {
+  if (selectedNPCName.value === 'None') {
+    selectedNPCName.value = null;
+  }
   activeView.value = 'loading';
-  await generateRoomDescription(dungeonStore.currentDungeon, dungeonStore.selectedRoomId, roomFormName.value, roomFormShortDescription.value);
+
+  // Handle NPC logic here
+  let npcData = null;
+  if (selectedNPCName.value) {
+    // Find the NPC in the dungeon's NPC list
+    const npcIndex = dungeonStore.currentDungeon.npcs.findIndex(
+      (npc) => npc.name === selectedNPCName.value
+    );
+    if (npcIndex !== -1) {
+      const npc = dungeonStore.currentDungeon.npcs[npcIndex];
+
+      // Check if the NPC has a full description
+      if (!npc.complete) {
+        // Generate the NPC's full description
+        await dungeonStore.generateDungeonNPC(npcIndex);
+      }
+
+      // Now retrieve the updated NPC data
+      npcData = dungeonStore.currentDungeon.npcs[npcIndex];
+      // Ensure npcData has npc_string
+      if (!npcData.npc_string) {
+        console.error('npc_string not found on npcData');
+      }
+    }
+  }
+
+  // Call generateRoomDescription with npcData
+  await generateRoomDescription(
+    dungeonStore.currentDungeon,
+    dungeonStore.selectedRoomId,
+    roomFormName.value,
+    roomFormShortDescription.value,
+    npcData,
+  );
+
   activeView.value = 'description';
   dungeonStore.saveDungeons();
   loadRoomData(dungeonStore.selectedRoomId);
 }
+
 
 onMounted(() => {
   if (dungeonStore.selectedRoomId === null) {

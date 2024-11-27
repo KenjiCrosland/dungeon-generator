@@ -118,12 +118,12 @@
           <!-- Container for the map and sidebar -->
           <div class="map-and-sidebar-container" ref="mapContainer">
             <!-- Dungeon Map Wrapper -->
-            <div class="dungeon-map-wrapper" ref="mapWrapper">
+            <div class="dungeon-map-wrapper" ref="mapWrapper" @click="handleMapWrapperClick">
               <!-- Dungeon Map Container -->
-              <div v-if="dungeonStore.currentDungeon" class="dungeon-map-container">
+              <div v-if="dungeonStore.currentDungeon" class="dungeon-map-container" ref="mapContainer">
                 <h4>{{ dungeonStore.currentDungeon.dungeonOverview.title }}</h4>
                 <div v-if="dungeonStore.currentDungeon.rooms">
-                  <DungeonMap :rooms="dungeonStore.currentDungeon.rooms" @roomClicked="handleRoomClick"
+                  <DungeonMap :rooms="dungeonStore.currentDungeon.rooms" @roomClicked="handleRoomClick" ref="dungeonMap"
                     @mapClicked="handleMapClick" />
                 </div>
                 <div class="generate-button-container">
@@ -175,7 +175,7 @@
                     <p>{{ npc.read_aloud_description }}</p>
                   </div>
                   <p>{{ npc.description_of_position }}</p>
-                  <p>{{ npc.current_location }}</p>
+                  <p>{{ npc.why_in_dungeon }}</p>
                   <p>{{ npc.distinctive_features_or_mannerisms }}</p>
                   <p>{{ npc.character_secret }}</p>
                   <h3>Relationships</h3>
@@ -250,10 +250,36 @@ const dungeonStore = useDungeonStore();
 const windowWidth = ref(window.innerWidth);
 const isSidebarVisible = ref(false); // Start hidden on mobile
 
+
 const mapContainer = ref(null);
+const dungeonMap = ref(null);
 const mapWrapper = ref(null); // Reference to the map wrapper
 const mapSidebarRef = ref(null); // Reference to the map sidebar component
 const mapContainerHeight = ref('auto');
+
+function handleMapWrapperClick(event) {
+  if (dungeonStore.isMapSidebarCollapsed) {
+    // Sidebar is already closed; do nothing
+    return;
+  }
+
+  // Get the DungeonMap element
+  const dungeonMapElement = dungeonMap.value.$el;
+  const sidebarElement = mapSidebarRef.value.$el;
+
+  // Check if the click was inside DungeonMap or the Map Sidebar
+  if (
+    dungeonMapElement.contains(event.target) ||
+    sidebarElement.contains(event.target)
+  ) {
+    // Click was inside DungeonMap or the sidebar; do nothing
+    return;
+  }
+
+  // Click was outside DungeonMap and the sidebar; close the sidebar
+  dungeonStore.isMapSidebarCollapsed = true;
+}
+
 
 const difficultyOptions = [
   'Tier 1: Basic - A local hero in the making.',

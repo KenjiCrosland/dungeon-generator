@@ -18,11 +18,11 @@ Please format the NPC description as a JSON object with the following keys:
 
 {
   "name": "${npcName}",
-  "description_of_position": "Provide a specific and detailed description of their role or position within the dungeon, including a detail that sets them apart from others in that role.",
-  "current_location": "Provide a location within the dungeon where ${npcName} can be found and explain why they are there, considering a current goal or aspiration of theirs.",
+  "description_of_position": "Provide a specific and detailed description of their role in society, including a detail that sets them apart from others in that role.",
+  "why_in_dungeon": "Why are they here in the dungeon? Do they live here? Are they visiting? Consider a current goal or aspiration of theirs. If adventurers ran into them what would they be doing?",
   "distinctive_features_or_mannerisms": "Provide a distinctive feature or peculiar mannerism observable in their actions. Avoid clichés and consider how these traits might influence their interactions with others.",
   "character_secret": "A hidden motivation or secret of ${npcName} that influences their behavior. Be specific about what this secret is and how it impacts their actions.",
-  "read_aloud_description": "A concise 2-3 sentence description designed for a GM to read aloud when players first encounter ${npcName}."
+  "read_aloud_description": "A concise 2-3 sentence description designed for a GM to read aloud when players first encounter ${npcName}. Remember that this would be somewhere in the dungeon."
 }
 `;
 }
@@ -65,7 +65,7 @@ export function validateDungeonNPCResponse(jsonString) {
     const requiredKeys = [
       'name',
       'description_of_position',
-      'current_location',
+      'why_in_dungeon',
       'distinctive_features_or_mannerisms',
       'character_secret',
       'read_aloud_description',

@@ -251,6 +251,8 @@ export const useDungeonStore = defineStore('dungeon', () => {
       // Combine NPC data
       const completeNPC = { ...npc, ...npcData, ...relationshipsData };
       completeNPC.opened = true; // Open the accordion after generating full description
+      completeNPC.complete = true; // Mark the NPC as complete
+      completeNPC.npc_string = buildNPCString(npc);
 
       // Update the NPC in the current dungeon's NPC list
       currentDungeon.value.npcs.splice(npcIndex, 1, completeNPC);
@@ -288,6 +290,48 @@ export const useDungeonStore = defineStore('dungeon', () => {
     npcShortDescription.value = '';
 
     saveDungeons();
+  }
+
+  function buildNPCString(npc) {
+    let npcStringParts = [];
+
+    if (npc.name) {
+      npcStringParts.push(npc.name);
+    }
+
+    if (npc.description_of_position) {
+      npcStringParts.push(npc.description_of_position);
+    }
+
+    if (npc.current_location) {
+      npcStringParts.push(npc.current_location);
+    }
+
+    if (npc.distinctive_features_or_mannerisms) {
+      npcStringParts.push(npc.distinctive_features_or_mannerisms);
+    }
+
+    if (npc.character_secret) {
+      npcStringParts.push(npc.character_secret);
+    }
+
+    if (npc.relationships && Object.keys(npc.relationships).length > 0) {
+      // Concatenate relationships into a single string
+      const relationshipsString = Object.entries(npc.relationships)
+        .map(
+          ([relatedNpcName, relationship]) =>
+            `${relatedNpcName}: ${relationship}`,
+        )
+        .join('\n');
+      npcStringParts.push(relationshipsString);
+    }
+
+    if (npc.roleplaying_tips) {
+      npcStringParts.push(npc.roleplaying_tips);
+    }
+
+    // Join all parts with newlines or any other delimiter you prefer
+    return npcStringParts.join('\n');
   }
 
   return {

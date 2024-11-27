@@ -6,26 +6,17 @@ import {
   contentArrayToString,
   dungeonOverviewToString,
 } from '../util/content-to-string.mjs';
+// Import prompt, validation, and processing functions
 import {
   generateEntrancePrompt,
   validateEntranceResponse,
   processEntranceResponse,
 } from '../prompts/dungeon-entrance.mjs';
 import {
-  generateLivingRoomPrompt,
-  validateLivingRoomResponse,
-  processLivingRoomResponse,
-} from '../prompts/living-room.mjs';
-import {
-  generateObstaclePrompt,
-  validateObstacleResponse,
-  processObstacleResponse,
-} from '../prompts/dungeon-obstacle.mjs';
-import {
-  generateKeyRoomPrompt,
-  validateKeyRoomResponse,
-  processKeyRoomResponse,
-} from '../prompts/key-room.mjs';
+  generateCustomRoomPrompt,
+  validateCustomRoomResponse,
+  processCustomRoomResponse,
+} from '../prompts/custom-room.mjs';
 import {
   generateBossRoomPrompt,
   validateBossRoomResponse,
@@ -37,6 +28,16 @@ import {
   processSetbackRoomResponse,
 } from '../prompts/setback-room.mjs';
 import {
+  generateSecretRoomPrompt,
+  validateSecretRoomResponse,
+  processSecretRoomResponse,
+} from '../prompts/secret-room.mjs';
+import {
+  generateLivingRoomPrompt,
+  validateLivingRoomResponse,
+  processLivingRoomResponse,
+} from '../prompts/living-room.mjs';
+import {
   generateConnectingRoomPrompt,
   validateConnectingRoomResponse,
   processConnectingRoomResponse,
@@ -47,20 +48,20 @@ import {
   processPurposeRoomResponse,
 } from '../prompts/purpose-room.mjs';
 import {
-  generateCustomRoomPrompt,
-  validateCustomRoomResponse,
-  processCustomRoomResponse,
-} from '../prompts/custom-room.mjs';
-import {
   generateSecretDoorPrompt,
   validateSecretDoorResponse,
   processSecretDoorResponse,
 } from '../prompts/secret-door.mjs';
 import {
-  generateSecretRoomPrompt,
-  validateSecretRoomResponse,
-  processSecretRoomResponse,
-} from '../prompts/secret-room.mjs';
+  generateObstaclePrompt,
+  validateObstacleResponse,
+  processObstacleResponse,
+} from '../prompts/dungeon-obstacle.mjs';
+import {
+  generateKeyRoomPrompt,
+  validateKeyRoomResponse,
+  processKeyRoomResponse,
+} from '../prompts/key-room.mjs';
 
 export function useRoomDescription() {
   // **Helper Function: Aggregate Connected Rooms' Summaries**
@@ -92,12 +93,303 @@ export function useRoomDescription() {
     return summaries.filter((room) => room.summary);
   }
 
+  // **Handler Functions**
+
+  // Entrance Room Handler
+  async function handleEntranceRoom({
+    dungeonOverview,
+    shortDescription,
+    connectedRoomsInfo,
+    formRoomSummary,
+  }) {
+    const prompt = generateEntrancePrompt(
+      dungeonOverview,
+      shortDescription,
+      connectedRoomsInfo,
+      formRoomSummary,
+    );
+    const response = await generateGptResponse(
+      prompt,
+      validateEntranceResponse,
+    );
+    const roomDescription = JSON.parse(response);
+    const contentArray = processEntranceResponse(roomDescription);
+    return { roomDescription, contentArray };
+  }
+
+  // Custom Room Handler
+  async function handleCustomRoom({
+    dungeonOverview,
+    shortDescription,
+    connectedRoomsInfo,
+    formRoomName,
+    formRoomSummary,
+    npcString,
+  }) {
+    const prompt = generateCustomRoomPrompt(
+      dungeonOverview,
+      shortDescription,
+      connectedRoomsInfo,
+      formRoomName,
+      formRoomSummary,
+      npcString,
+    );
+    console.log('Prompt:', prompt);
+    const customRoomResponse = await generateGptResponse(
+      prompt,
+      validateCustomRoomResponse,
+    );
+    const roomDescription = JSON.parse(customRoomResponse);
+    const contentArray = processCustomRoomResponse(roomDescription);
+    return { roomDescription, contentArray };
+  }
+
+  // Boss Room Handler
+  async function handleBossRoom({
+    dungeonOverview,
+    shortDescription,
+    connectedRoomsInfo,
+  }) {
+    const prompt = generateBossRoomPrompt(
+      dungeonOverview,
+      shortDescription,
+      connectedRoomsInfo,
+    );
+    const response = await generateGptResponse(
+      prompt,
+      validateBossRoomResponse,
+    );
+    const roomDescription = JSON.parse(response);
+    const contentArray = processBossRoomResponse(roomDescription);
+    return { roomDescription, contentArray };
+  }
+
+  // Setback Room Handler
+  async function handleSetbackRoom({
+    dungeonOverview,
+    shortDescription,
+    connectedRoomsInfo,
+  }) {
+    const prompt = generateSetbackRoomPrompt(
+      dungeonOverview,
+      shortDescription,
+      connectedRoomsInfo,
+    );
+    const response = await generateGptResponse(
+      prompt,
+      validateSetbackRoomResponse,
+    );
+    const roomDescription = JSON.parse(response);
+    const contentArray = processSetbackRoomResponse(roomDescription);
+    return { roomDescription, contentArray };
+  }
+
+  // Secret Room Handler
+  async function handleSecretRoom({
+    room,
+    currentDungeon,
+    dungeonOverview,
+    shortDescription,
+    connectedRoomsInfo,
+  }) {
+    const connectedRoomSummary =
+      currentDungeon.rooms.find(
+        (r) => r.id === room.doorways[0].connectedRoomId,
+      ).oneSentenceSummary || '';
+    const prompt = generateSecretRoomPrompt(
+      dungeonOverview,
+      shortDescription,
+      connectedRoomsInfo,
+      connectedRoomSummary,
+    );
+    console.log('Prompt:', prompt);
+    const response = await generateGptResponse(
+      prompt,
+      validateSecretRoomResponse,
+    );
+    const roomDescription = JSON.parse(response);
+    const contentArray = processSecretRoomResponse(roomDescription);
+    return { roomDescription, contentArray };
+  }
+
+  // Living Room Handler
+  async function handleLivingRoom({
+    dungeonOverview,
+    shortDescription,
+    connectedRoomsInfo,
+    currentDungeon,
+  }) {
+    const existingRooms = currentDungeon.roomNames.join(', ');
+    const prompt = generateLivingRoomPrompt(
+      dungeonOverview,
+      shortDescription,
+      existingRooms,
+      connectedRoomsInfo,
+    );
+    console.log('Prompt:', prompt);
+    const response = await generateGptResponse(
+      prompt,
+      validateLivingRoomResponse,
+    );
+    const roomDescription = JSON.parse(response);
+    const contentArray = processLivingRoomResponse(roomDescription);
+    return { roomDescription, contentArray };
+  }
+
+  // Connecting Room Handler
+  async function handleConnectingRoom({
+    dungeonOverview,
+    shortDescription,
+    connectedRoomsInfo,
+  }) {
+    const prompt = generateConnectingRoomPrompt(
+      dungeonOverview,
+      shortDescription,
+      connectedRoomsInfo,
+    );
+    console.log('Prompt:', prompt);
+    const response = await generateGptResponse(
+      prompt,
+      validateConnectingRoomResponse,
+    );
+    const roomDescription = JSON.parse(response);
+    const contentArray = processConnectingRoomResponse(roomDescription);
+    return { roomDescription, contentArray };
+  }
+
+  // Purpose Room Handler
+  async function handlePurposeRoom({
+    dungeonOverview,
+    shortDescription,
+    connectedRoomsInfo,
+  }) {
+    const prompt = generatePurposeRoomPrompt(
+      dungeonOverview,
+      shortDescription,
+      connectedRoomsInfo,
+    );
+    console.log('Prompt:', prompt);
+    const response = await generateGptResponse(
+      prompt,
+      validatePurposeRoomResponse,
+    );
+    const roomDescription = JSON.parse(response);
+    const contentArray = processPurposeRoomResponse(roomDescription);
+    return { roomDescription, contentArray };
+  }
+
+  // **Handler for Secret Doors**
+  async function handleSecretDoor({
+    room,
+    currentDungeon,
+    dungeonOverview,
+    connectedRoomsInfo,
+    contentArray,
+  }) {
+    const roomDescriptionString = contentArrayToString(
+      contentArray.filter((item) => item.format !== 'read_aloud'),
+    );
+
+    const secretDoorway = room.doorways.find(
+      (doorway) => doorway.type.toLowerCase() === 'secret',
+    );
+
+    let secretRoomSummary = '';
+
+    if (secretDoorway && secretDoorway.connectedRoomId) {
+      const secretRoom = currentDungeon.rooms.find(
+        (r) => r.id === secretDoorway.connectedRoomId,
+      );
+      if (secretRoom && secretRoom.oneSentenceSummary) {
+        secretRoomSummary = secretRoom.oneSentenceSummary;
+      }
+    }
+
+    const prompt = generateSecretDoorPrompt(
+      dungeonOverview,
+      roomDescriptionString,
+      connectedRoomsInfo,
+      secretRoomSummary,
+    );
+    console.log('Secret Door Prompt:', prompt);
+    const secretDoorResponse = await generateGptResponse(
+      prompt,
+      validateSecretDoorResponse,
+    );
+    if (validateSecretDoorResponse(secretDoorResponse)) {
+      const secretDoorData = JSON.parse(secretDoorResponse);
+      const secretDoorContent = processSecretDoorResponse(secretDoorData);
+      contentArray.push(...secretDoorContent);
+    } else {
+      console.error('Secret door response validation failed.');
+    }
+  }
+
+  // **Handler for Rooms That Require a Key**
+  async function handleRoomRequiresKey({
+    room,
+    currentDungeon,
+    dungeonOverview,
+    connectedRoomsInfo,
+    contentArray,
+  }) {
+    const obstaclePrompt = generateObstaclePrompt(
+      dungeonOverview,
+      contentArrayToString(room.contentArray || []),
+      room.shortDescription,
+      room.hasKeyInRoomId,
+      connectedRoomsInfo,
+    );
+    const obstacleResponse = await generateGptResponse(
+      obstaclePrompt,
+      validateObstacleResponse,
+    );
+    const obstacleContentArray = processObstacleResponse(
+      JSON.parse(obstacleResponse),
+    );
+    contentArray.push(...obstacleContentArray);
+
+    const obstacleString = contentArrayToString(obstacleContentArray);
+    const keyRoom = currentDungeon.rooms.find(
+      (r) => r.id === room.hasKeyInRoomId,
+    );
+    const keyPrompt = generateKeyRoomPrompt(
+      dungeonOverview,
+      room.shortDescription,
+      obstacleString,
+      connectedRoomsInfo,
+    );
+    const keyRoomResponse = await generateGptResponse(
+      keyPrompt,
+      validateKeyRoomResponse,
+    );
+    const keyRoomContentArray = processKeyRoomResponse(
+      JSON.parse(keyRoomResponse),
+    );
+    keyRoom.contentArray = keyRoomContentArray;
+    keyRoom.name = JSON.parse(keyRoomResponse).name;
+    keyRoom.oneSentenceSummary =
+      JSON.parse(keyRoomResponse).one_sentence_summary;
+  }
+
+  // **Mapping Room Types to Handler Functions**
+  const roomTypeHandlers = {
+    boss: handleBossRoom,
+    setback: handleSetbackRoom,
+    secret: handleSecretRoom,
+    living: handleLivingRoom,
+    connecting: handleConnectingRoom,
+    purpose: handlePurposeRoom,
+    // Add other room types as needed
+  };
+
   // **Main Function: Generate Room Description**
   async function generateRoomDescription(
     currentDungeon,
     selectedRoomId,
     formRoomName,
     formRoomSummary,
+    npcData,
   ) {
     try {
       if (!currentDungeon || selectedRoomId === null) {
@@ -134,208 +426,68 @@ export function useRoomDescription() {
         )
         .join(', ');
 
-      let prompt;
       let roomDescription = {};
       let contentArray = [];
 
       // **Step 3: Generate Prompt Based on Room Type with Summaries**
       if (isEntrance) {
-        prompt = generateEntrancePrompt(
+        ({ roomDescription, contentArray } = await handleEntranceRoom({
           dungeonOverview,
           shortDescription,
           connectedRoomsInfo,
           formRoomSummary,
-        );
-        const response = await generateGptResponse(
-          prompt,
-          validateEntranceResponse,
-        );
-        roomDescription = JSON.parse(response);
-        contentArray = processEntranceResponse(roomDescription);
+        }));
       } else if (formRoomName || formRoomSummary) {
-        console.log('Form Room Name:', formRoomName);
-        prompt = generateCustomRoomPrompt(
+        let npcString = '';
+        if (npcData && npcData.npc_string) {
+          npcString = npcData.npc_string;
+        }
+
+        ({ roomDescription, contentArray } = await handleCustomRoom({
           dungeonOverview,
           shortDescription,
           connectedRoomsInfo,
           formRoomName,
           formRoomSummary,
-        );
-        console.log('Prompt:', prompt);
-        const customRoomResponse = await generateGptResponse(
-          prompt,
-          validateCustomRoomResponse,
-        );
-        roomDescription = JSON.parse(customRoomResponse);
-        contentArray = processCustomRoomResponse(roomDescription);
-      } else if (room.roomType === 'boss') {
-        prompt = generateBossRoomPrompt(
+          npcString,
+        }));
+      } else if (room.roomType in roomTypeHandlers) {
+        const handler = roomTypeHandlers[room.roomType];
+        ({ roomDescription, contentArray } = await handler({
+          room,
+          currentDungeon,
           dungeonOverview,
           shortDescription,
           connectedRoomsInfo,
-        );
-        const bossRoomResponse = await generateGptResponse(
-          prompt,
-          validateBossRoomResponse,
-        );
-        roomDescription = JSON.parse(bossRoomResponse);
-        contentArray = processBossRoomResponse(roomDescription);
-      } else if (room.roomType === 'setback') {
-        prompt = generateSetbackRoomPrompt(
-          dungeonOverview,
-          shortDescription,
-          connectedRoomsInfo,
-        );
-        const setbackRoomResponse = await generateGptResponse(
-          prompt,
-          validateSetbackRoomResponse,
-        );
-        roomDescription = JSON.parse(setbackRoomResponse);
-        contentArray = processSetbackRoomResponse(roomDescription);
-      } else if (room.roomType === 'secret') {
-        const connetedRoomSummary =
-          currentDungeon.rooms.find(
-            (r) => r.id === room.doorways[0].connectedRoomId,
-          ).oneSentenceSummary || '';
-        prompt = generateSecretRoomPrompt(
-          dungeonOverview,
-          shortDescription,
-          connectedRoomsInfo,
-          connetedRoomSummary,
-        );
-        console.log('Prompt:', prompt);
-        const secretRoomResponse = await generateGptResponse(
-          prompt,
-          validateSecretRoomResponse,
-        );
-        roomDescription = JSON.parse(secretRoomResponse);
-        contentArray = processSecretRoomResponse(roomDescription);
-      } else if (room.roomType === 'living') {
-        const existingRooms = currentDungeon.roomNames.join(', ');
-        prompt = generateLivingRoomPrompt(
-          dungeonOverview,
-          shortDescription,
-          existingRooms,
-          connectedRoomsInfo,
-        );
-        console.log('Prompt:', prompt);
-        const livingRoomResponse = await generateGptResponse(
-          prompt,
-          validateLivingRoomResponse,
-        );
-        roomDescription = JSON.parse(livingRoomResponse);
-        contentArray = processLivingRoomResponse(roomDescription);
-      } else if (room.roomType === 'connecting') {
-        prompt = generateConnectingRoomPrompt(
-          dungeonOverview,
-          shortDescription,
-          connectedRoomsInfo,
-        );
-        console.log('Prompt:', prompt);
-        const connectingRoomResponse = await generateGptResponse(
-          prompt,
-          validateConnectingRoomResponse,
-        );
-        roomDescription = JSON.parse(connectingRoomResponse);
-        contentArray = processConnectingRoomResponse(roomDescription);
-      } else if (room.roomType === 'purpose') {
-        console.log('Prompt:', prompt);
-        prompt = generatePurposeRoomPrompt(
-          dungeonOverview,
-          shortDescription,
-          connectedRoomsInfo,
-        );
-        const purposeRoomResponse = await generateGptResponse(
-          prompt,
-          validatePurposeRoomResponse,
-        );
-        roomDescription = JSON.parse(purposeRoomResponse);
-        contentArray = processPurposeRoomResponse(roomDescription);
+        }));
+      } else {
+        console.error('Unknown room type:', room.roomType);
+        return;
       }
 
+      // **Handle Secret Doors and Key Rooms**
       const hasSecretDoor = room.doorways.some(
         (doorway) => doorway.type.toLowerCase() === 'secret',
       );
 
       if (hasSecretDoor && room.roomType !== 'secret' && !room.requiresKey) {
-        const roomDescriptionString = contentArrayToString(
-          contentArray.filter((item) => item.format !== 'read_aloud'),
-        );
-
-        // **Get Secret Room Summary if Available**
-        const secretDoorway = room.doorways.find(
-          (doorway) => doorway.type.toLowerCase() === 'secret',
-        );
-
-        let secretRoomSummary = '';
-
-        if (secretDoorway && secretDoorway.connectedRoomId) {
-          const secretRoom = currentDungeon.rooms.find(
-            (r) => r.id === secretDoorway.connectedRoomId,
-          );
-          if (secretRoom && secretRoom.oneSentenceSummary) {
-            secretRoomSummary = secretRoom.oneSentenceSummary;
-          }
-        }
-
-        prompt = generateSecretDoorPrompt(
+        await handleSecretDoor({
+          room,
+          currentDungeon,
           dungeonOverview,
-          roomDescriptionString,
           connectedRoomsInfo,
-          secretRoomSummary,
-        );
-        console.log('Secret Door Prompt:', prompt);
-        const secretDoorResponse = await generateGptResponse(
-          prompt,
-          validateSecretDoorResponse,
-        );
-        if (validateSecretDoorResponse(secretDoorResponse)) {
-          const secretDoorData = JSON.parse(secretDoorResponse);
-          const secretDoorContent = processSecretDoorResponse(secretDoorData);
-          contentArray.push(...secretDoorContent);
-        } else {
-          console.error('Secret door response validation failed.');
-          // Optionally, handle the error or continue without adding secret door content
-        }
+          contentArray,
+        });
       }
 
-      // **Handle Rooms That Require a Key**
       if (room.requiresKey) {
-        prompt = generateObstaclePrompt(
+        await handleRoomRequiresKey({
+          room,
+          currentDungeon,
           dungeonOverview,
-          contentArrayToString(room.contentArray || []),
-          room.shortDescription,
-          room.hasKeyInRoomId,
           connectedRoomsInfo,
-        );
-        const obstacleResponse = await generateGptResponse(
-          prompt,
-          validateObstacleResponse,
-        );
-        const obstacleContentArray = processObstacleResponse(
-          JSON.parse(obstacleResponse),
-        );
-        contentArray.push(...obstacleContentArray);
-
-        const obstacleString = contentArrayToString(obstacleContentArray);
-        const keyRoom = currentDungeon.rooms[room.hasKeyInRoomId - 1];
-        prompt = generateKeyRoomPrompt(
-          dungeonOverview,
-          shortDescription,
-          obstacleString,
-          connectedRoomsInfo,
-        );
-        const keyRoomResponse = await generateGptResponse(
-          prompt,
-          validateKeyRoomResponse,
-        );
-        const keyRoomContentArray = processKeyRoomResponse(
-          JSON.parse(keyRoomResponse),
-        );
-        keyRoom.contentArray = keyRoomContentArray;
-        keyRoom.name = JSON.parse(keyRoomResponse).name;
-        keyRoom.oneSentenceSummary =
-          JSON.parse(keyRoomResponse).one_sentence_summary;
+          contentArray,
+        });
       }
 
       // **Update Room Details**
