@@ -407,6 +407,7 @@ export function useRoomDescription() {
     living: handleLivingRoom,
     connecting: handleConnectingRoom,
     purpose: handlePurposeRoom,
+    locked: handleLockedRoom,
     // Add other room types as needed
   };
 
