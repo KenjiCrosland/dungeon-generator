@@ -94,6 +94,7 @@ export const useDungeonStore = defineStore('dungeon', () => {
   async function generateDungeonOverview() {
     try {
       loadingOverview.value = true;
+      activeTabIndex.value = 0;
       const prompt = dungeonOverviewPrompt(
         form.value.adjective,
         form.value.setting_type,

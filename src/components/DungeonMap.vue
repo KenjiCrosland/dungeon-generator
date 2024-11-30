@@ -1,6 +1,6 @@
 <template>
   <div class="dungeon-map">
-    <canvas ref="dungeonCanvas"></canvas>
+    <canvas class="responsive-canvas" ref="dungeonCanvas"></canvas>
   </div>
 </template>
 
@@ -912,7 +912,7 @@ onMounted(() => {
       if (distance <= position.radius) {
         roomClicked = true;
         clickedRoomId = position.roomId;
-        emit('roomClicked', { roomId: position.roomId, x: position.x });
+        emit('roomClicked', { roomId: position.roomId, x: position.x, y: position.y });
       }
     });
 

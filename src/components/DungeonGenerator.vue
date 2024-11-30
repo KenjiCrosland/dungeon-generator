@@ -81,7 +81,7 @@
       </div>
 
       <Tabs v-if="dungeonStore.currentDungeon || dungeonStore.loadingOverview"
-        :activeIndex="dungeonStore.activeTabIndex" @tab-changed="onTabChanged">
+        :activeIndex="dungeonStore.activeTabIndex" @tab-changed="onTabChanged" class="tabs">
         <TabPanel label="Overview">
           <OverviewSkeleton v-if="dungeonStore.loadingOverview" />
           <div v-if="dungeonStore.currentDungeon && dungeonStore.currentDungeon.dungeonOverview"
@@ -135,8 +135,8 @@
                 </div>
               </div>
             </div>
-            <MapSidebar v-model:isCollapsed="dungeonStore.isMapSidebarCollapsed"
-              :style="{ height: mapContainerHeight || 'auto' }" ref="mapSidebarRef">
+            <MapSidebar v-model:isCollapsed="dungeonStore.isMapSidebarCollapsed" ref="mapSidebarRef"
+              :style="mapContainerInlineStyles">
               <RoomDescription v-if="!dungeonStore.isMapSidebarCollapsed" />
             </MapSidebar>
           </div>
@@ -257,6 +257,12 @@ const mapWrapper = ref(null); // Reference to the map wrapper
 const mapSidebarRef = ref(null); // Reference to the map sidebar component
 const mapContainerHeight = ref('auto');
 
+const isMobileWidth = computed(() => windowWidth.value <= 768);
+const mapContainerInlineStyles = computed(() => (
+  // Set the height of the map container to match the sidebar height for non-mobile
+  isMobileWidth.value ? {} : { height: mapContainerHeight.value }
+));
+
 function handleMapWrapperClick(event) {
   if (dungeonStore.isMapSidebarCollapsed) {
     // Sidebar is already closed; do nothing
@@ -284,7 +290,7 @@ function handleMapWrapperClick(event) {
 const difficultyOptions = [
   'Tier 1: Basic - A local hero in the making.',
   'Tier 2: Expert - An established local hero.',
-  'Tier 3: Companion - A regional/kingdom hero.',
+  'Tier 3: Champion - A hero of the region.',
   'Tier 4: Master - A hero of the world.',
   'Tier 5: Immortal - A hero of the realms.',
 ]
@@ -390,22 +396,32 @@ onMounted(() => {
   window.addEventListener('resize', updateWindowWidth);
 });
 
-function handleRoomClick({ roomId, x }) {
+function handleRoomClick({ roomId, x, y }) {
   dungeonStore.selectedRoomId = roomId;
   dungeonStore.lastClickedRoomX = x;
 
-  if (dungeonStore.isMapSidebarCollapsed) {
-    dungeonStore.isMapSidebarCollapsed = false;
-    // Wait until the DOM updates and transition completes
-    setTimeout(() => {
+  if (!isMobileWidth.value) {
+    // Desktop behavior remains the same
+    if (dungeonStore.isMapSidebarCollapsed) {
+      dungeonStore.isMapSidebarCollapsed = false;
+      setTimeout(() => {
+        adjustMapScrollPosition(x);
+      }, 300);
+    } else {
       adjustMapScrollPosition(x);
-    }, 300); // Match the CSS transition duration
+    }
   } else {
-    // Sidebar is already expanded; adjust the map scroll position immediately
-    adjustMapScrollPosition(x);
+    // Mobile behavior: scroll both horizontally and vertically
+    if (dungeonStore.isMapSidebarCollapsed) {
+      dungeonStore.isMapSidebarCollapsed = false;
+      setTimeout(() => {
+        adjustMapScrollToPosition(x, y);
+      }, 300);
+    } else {
+      adjustMapScrollToPosition(x, y);
+    }
   }
 }
-
 
 function handleMapClick() {
   // Collapse the map sidebar if it's not already collapsed
@@ -431,8 +447,28 @@ function adjustMapScrollPosition(roomX) {
   }
 }
 
-</script>
+function adjustMapScrollToPosition(roomX, roomY) {
+  if (mapWrapper.value) {
+    const visibleWidth = mapWrapper.value.clientWidth;
+    const visibleHeight = mapWrapper.value.clientHeight;
+    const maxScrollLeft = mapWrapper.value.scrollWidth - visibleWidth;
+    const maxScrollTop = mapWrapper.value.scrollHeight - visibleHeight;
 
+    // Calculate the new scroll positions with limits
+    const targetScrollLeft = Math.min(Math.max(roomX - visibleWidth / 2, 0), maxScrollLeft);
+    const targetScrollTop = Math.min(Math.max(roomY - visibleHeight / 2, 0), maxScrollTop);
+
+    mapWrapper.value.scrollTo({
+      left: targetScrollLeft,
+      top: targetScrollTop,
+      behavior: 'smooth',
+    });
+  }
+}
+
+
+
+</script>
 <style scoped lang="scss">
 @import '@rei/cdr-tokens/dist/rei-dot-com/scss/cdr-tokens.scss';
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
@@ -452,22 +488,13 @@ function adjustMapScrollPosition(roomX) {
 .dungeon-map-wrapper {
   background-color: #fafaf6;
   overflow-x: auto;
+  overflow-y: auto;
   flex: 1 1 auto;
 }
 
 .dungeon-map-container {
   width: max-content;
   margin: 0 auto;
-}
-
-.map-sidebar {
-  width: 450px;
-  flex-shrink: 0;
-  transition: transform 0.3s ease;
-}
-
-.map-sidebar.collapsed {
-  transform: translateX(100%);
 }
 
 .generate-button-container {
@@ -478,6 +505,68 @@ function adjustMapScrollPosition(roomX) {
 .selected-room-description,
 .full-room-description {
   /* Optional: Add styles for content inside the sidebar */
+}
+
+/* Map Sidebar styles */
+.map-sidebar {
+  background-color: #fafaf6;
+  border-left: 1px solid #ccc;
+  width: 450px;
+  flex-shrink: 0;
+  transition: width 0.3s ease;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  font-size: small;
+}
+
+.map-sidebar.is-collapsed {
+  width: 20px;
+}
+
+.toggle-button {
+  position: absolute;
+  top: 10px;
+  left: -20px;
+  width: 20px;
+  height: 40px;
+  background-color: #ccc;
+  border-radius: 5px 0 0 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.sidebar-content {
+  padding: 10px;
+  overflow-y: auto;
+  height: 100%;
+}
+
+/* Overlay for mobile sidebar */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 2;
+}
+
+/* Sidebar Toggle Button */
+.sidebar-toggle {
+  display: none;
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 1001;
+
+  @media (max-width: 1020px) {
+    display: block;
+  }
 }
 
 /* Sidebar Styles */
@@ -539,30 +628,6 @@ function adjustMapScrollPosition(roomX) {
   .new-dungeon-button {
     width: 100%;
     margin-top: 1rem;
-  }
-}
-
-/* Overlay for mobile sidebar */
-.overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 2;
-}
-
-/* Sidebar Toggle Button */
-.sidebar-toggle {
-  display: none;
-  position: fixed;
-  top: 10px;
-  left: 10px;
-  z-index: 1001;
-
-  @media (max-width: 1020px) {
-    display: block;
   }
 }
 
@@ -653,8 +718,13 @@ function adjustMapScrollPosition(roomX) {
   }
 }
 
-/* Responsive design for smaller screens */
+/* Mobile styles */
 @media (max-width: 768px) {
+  .tabs {
+    width: calc(100vw - 1rem);
+    margin: 0 auto;
+  }
+
   .app-container {
     flex-direction: column;
   }
@@ -662,6 +732,72 @@ function adjustMapScrollPosition(roomX) {
   .main-content {
     margin: 0 auto;
     padding: 1rem;
+  }
+
+  .map-and-sidebar-container {
+    flex-direction: column;
+  }
+
+  .dungeon-map-wrapper {
+
+    margin-bottom: 500px;
+    /* Match the sidebar height */
+  }
+
+  /* Adjust the .map-sidebar for mobile */
+  .map-sidebar-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    z-index: 2;
+  }
+
+  .map-sidebar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 0;
+    transition: height 0.3s ease;
+    overflow: hidden;
+    border-left: none;
+    border-top: 1px solid #ccc;
+  }
+
+  .map-sidebar.is-collapsed {
+    height: 0;
+  }
+
+  .map-sidebar:not(.is-collapsed) {
+    height: 200px;
+    /* Adjust this height as needed */
+  }
+
+  .toggle-button {
+    position: fixed;
+    bottom: 210px;
+    /* Adjust based on sidebar height */
+    right: 10px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #ccc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    left: auto;
+    top: auto;
+  }
+
+  .sidebar-content {
+    height: 100%;
+  }
+
+  /* Adjust main content when sidebar is hidden */
+  .main-content {
+    margin-left: 0;
   }
 
   .sidebar {
