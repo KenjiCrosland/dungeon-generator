@@ -323,9 +323,11 @@ export function useRoomDescription() {
     connectedRoomsInfo,
     npcString = '',
   }) {
+    const existingRooms = currentDungeon.roomNames.join(', ');
     const prompt = generateConnectingRoomPrompt(
       dungeonOverview,
       shortDescription,
+      existingRooms,
       connectedRoomsInfo,
       npcString,
     );
@@ -348,9 +350,11 @@ export function useRoomDescription() {
     connectedRoomsInfo,
     npcString = '',
   }) {
+    const existingRooms = currentDungeon.roomNames.join(', ');
     const prompt = generatePurposeRoomPrompt(
       dungeonOverview,
       shortDescription,
+      existingRooms,
       connectedRoomsInfo,
       npcString,
     );
@@ -411,51 +415,109 @@ export function useRoomDescription() {
     }
   }
 
-  // **Handler for Rooms That Require a Key**
-  async function handleRoomRequiresKey({
+  async function handleObstacleRoom({
     room,
     currentDungeon,
     dungeonOverview,
+    shortDescription,
     connectedRoomsInfo,
-    contentArray,
+    formRoomName = '',
+    formRoomSummary = '',
+    npcString = '',
   }) {
+    // Find the key room
+    const keyRoom = currentDungeon.rooms.find(
+      (r) => r.id === room.hasKeyInRoomId,
+    );
+
+    let keyRoomDescriptionString = '';
+
+    if (keyRoom && keyRoom.contentArray && keyRoom.contentArray.length > 0) {
+      // Key room has been generated, use its description
+      keyRoomDescriptionString = contentArrayToString(keyRoom.contentArray);
+    } else {
+      // Key room has not been generated or has no content
+      console.log('Key room content not found, proceeding without it');
+      // Proceed without the key room description
+    }
+
+    // Generate the obstacle prompt for the room
     const obstaclePrompt = generateObstaclePrompt(
       dungeonOverview,
-      contentArrayToString(room.contentArray || []),
-      room.shortDescription,
-      room.hasKeyInRoomId,
+      shortDescription,
       connectedRoomsInfo,
+      room.hasKeyInRoomId,
+      keyRoomDescriptionString, // Pass the key room description if available
+      formRoomName,
+      formRoomSummary,
+      npcString,
     );
+    console.log('Obstacle Prompt:', obstaclePrompt);
+
+    // Get the response and process it
     const obstacleResponse = await generateGptResponse(
       obstaclePrompt,
       validateObstacleResponse,
     );
-    const obstacleContentArray = processObstacleResponse(
-      JSON.parse(obstacleResponse),
-    );
-    contentArray.push(...obstacleContentArray);
+    const roomDescription = JSON.parse(obstacleResponse);
+    const contentArray = processObstacleResponse(roomDescription);
 
-    const obstacleString = contentArrayToString(obstacleContentArray);
-    const keyRoom = currentDungeon.rooms.find(
-      (r) => r.id === room.hasKeyInRoomId,
+    // Return the obstacle room's description and content array
+    return { roomDescription, contentArray };
+  }
+
+  async function handleKeyRoom({
+    room,
+    currentDungeon,
+    dungeonOverview,
+    shortDescription,
+    connectedRoomsInfo,
+    formRoomName = '',
+    formRoomSummary = '',
+    npcString = '',
+  }) {
+    // Find the obstacle room
+    const obstacleRoom = currentDungeon.rooms.find(
+      (r) => r.id === room.hasKeyForRoomId,
     );
+
+    if (!obstacleRoom) {
+      console.error('Obstacle room not found');
+      return;
+    }
+
+    let obstacleString = '';
+
+    // Check if the obstacle room has content
+    if (obstacleRoom.contentArray && obstacleRoom.contentArray.length > 0) {
+      // Obstacle room has content, use it
+      obstacleString = contentArrayToString(obstacleRoom.contentArray);
+    } else {
+      // Obstacle room does not have content
+      console.log('Obstacle room content not found, proceeding without it');
+      // We can proceed without the obstacle description
+    }
+
+    // Now generate the key room description
     const keyPrompt = generateKeyRoomPrompt(
       dungeonOverview,
-      room.shortDescription,
-      obstacleString,
-      connectedRoomsInfo,
+      shortDescription,
+      obstacleString, // This may be an empty string if obstacle room content is not available
+      formRoomName,
+      formRoomSummary,
+      npcString,
     );
+    console.log('Key Room Prompt:', keyPrompt);
+
     const keyRoomResponse = await generateGptResponse(
       keyPrompt,
       validateKeyRoomResponse,
     );
-    const keyRoomContentArray = processKeyRoomResponse(
-      JSON.parse(keyRoomResponse),
-    );
-    keyRoom.contentArray = keyRoomContentArray;
-    keyRoom.name = JSON.parse(keyRoomResponse).name;
-    keyRoom.oneSentenceSummary =
-      JSON.parse(keyRoomResponse).one_sentence_summary;
+    const roomDescription = JSON.parse(keyRoomResponse);
+    const contentArray = processKeyRoomResponse(roomDescription);
+
+    // Return the key room's description and content array
+    return { roomDescription, contentArray };
   }
 
   // **Mapping Room Types to Handler Functions**
@@ -524,7 +586,30 @@ export function useRoomDescription() {
 
       // First, check for special room types
       if (isEntrance) {
+        // Handle entrance room
         ({ roomDescription, contentArray } = await handleEntranceRoom({
+          dungeonOverview,
+          shortDescription,
+          connectedRoomsInfo,
+          formRoomName,
+          formRoomSummary,
+          npcString,
+        }));
+      } else if (room.requiresKey) {
+        ({ roomDescription, contentArray } = await handleObstacleRoom({
+          room,
+          currentDungeon,
+          dungeonOverview,
+          shortDescription,
+          connectedRoomsInfo,
+          formRoomName,
+          formRoomSummary,
+          npcString,
+        }));
+      } else if (room.hasKeyForRoomId) {
+        ({ roomDescription, contentArray } = await handleKeyRoom({
+          room,
+          currentDungeon,
           dungeonOverview,
           shortDescription,
           connectedRoomsInfo,
@@ -573,12 +658,17 @@ export function useRoomDescription() {
         return;
       }
 
-      // **Handle Secret Doors and Key Rooms**
+      // **Update Room Details**
+      room.oneSentenceSummary = roomDescription.one_sentence_summary || '';
+      room.name = roomDescription.name || `Room ${selectedRoomId}`;
+      room.contentArray = contentArray;
+
+      // **Handle Secret Doors**
       const hasSecretDoor = room.doorways.some(
         (doorway) => doorway.type.toLowerCase() === 'secret',
       );
 
-      if (hasSecretDoor && room.roomType !== 'secret' && !room.requiresKey) {
+      if (hasSecretDoor && room.roomType !== 'secret') {
         await handleSecretDoor({
           room,
           currentDungeon,
@@ -587,21 +677,6 @@ export function useRoomDescription() {
           contentArray,
         });
       }
-
-      if (room.requiresKey) {
-        await handleRoomRequiresKey({
-          room,
-          currentDungeon,
-          dungeonOverview,
-          connectedRoomsInfo,
-          contentArray,
-        });
-      }
-
-      // **Update Room Details**
-      room.oneSentenceSummary = roomDescription.one_sentence_summary || '';
-      room.name = roomDescription.name || `Room ${selectedRoomId}`;
-      room.contentArray = contentArray;
 
       // **Update Dungeon's Room Names**
       currentDungeon.roomNames =

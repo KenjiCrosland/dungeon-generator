@@ -81,11 +81,20 @@ export function addDungeonDetails(dungeonData) {
     return visited.size;
   }
 
-  function identifyMainLockedDoor(lockedDoors, graph) {
+  // Modified function
+  function identifyMainLockedDoor(lockedDoors, graph, entranceRoomId) {
     let mainLockedDoor = null;
     let maxRoomsBeyond = 0;
 
     lockedDoors.forEach((lockedDoor) => {
+      // Skip locked doors connected to the entrance room
+      if (
+        lockedDoor.from === entranceRoomId ||
+        lockedDoor.to === entranceRoomId
+      ) {
+        return;
+      }
+
       let roomsBeyond = countReachableRooms(
         lockedDoor.to,
         lockedDoor.from,
@@ -99,16 +108,15 @@ export function addDungeonDetails(dungeonData) {
       }
     });
 
-    // If no main locked door found, return null
-    if (!mainLockedDoor) {
-      return null;
-    }
-
     return mainLockedDoor;
   }
 
-  function assignBossRoom(bossRoomId, rooms) {
-    if (bossRoomId !== null && rooms[bossRoomId]) {
+  function assignBossRoom(bossRoomId, rooms, excludedRoomIds = []) {
+    if (
+      bossRoomId !== null &&
+      !excludedRoomIds.includes(bossRoomId) &&
+      rooms[bossRoomId]
+    ) {
       rooms[bossRoomId].roomType = 'boss';
     }
   }
@@ -355,14 +363,21 @@ export function addDungeonDetails(dungeonData) {
   let rooms = buildRoomMap(roomsArray);
   let graph = buildGraph(roomsArray);
   let lockedDoors = collectLockedDoors(roomsArray);
-  let mainLockedDoor = identifyMainLockedDoor(lockedDoors, graph);
 
   let entranceRoomId = roomsArray[0].id; // Assuming the first room is the entrance
 
-  if (mainLockedDoor) {
+  // Identify main locked door
+  let mainLockedDoor = identifyMainLockedDoor(
+    lockedDoors,
+    graph,
+    entranceRoomId,
+  );
+
+  if (mainLockedDoor && mainLockedDoor.from !== entranceRoomId) {
     // Add requiresKey and hasKeyInRoomId to the room with the locked door
     let roomWithLockedDoor = rooms[mainLockedDoor.from];
     roomWithLockedDoor.requiresKey = true;
+    roomWithLockedDoor.roomType = 'obstacle';
     roomWithLockedDoor.hasKeyInRoomId = null; // Will be set later
 
     // Mark the specific doorway that requires the key
@@ -382,19 +397,30 @@ export function addDungeonDetails(dungeonData) {
       mainLockedDoor,
     );
 
+    // Prepare excluded rooms
+    let excludedRoomsForKey = new Set([
+      ...roomsBeyondLockedDoor,
+      roomWithLockedDoor.id,
+      entranceRoomId,
+    ]);
+
     // Find the furthest leaf node in a different direction for the key
     let roomWithKeyId = findFurthestLeafNode(
       entranceRoomId,
-      roomsBeyondLockedDoor,
+      excludedRoomsForKey,
       graph,
       mainLockedDoor,
     );
 
-    // Modify this part to handle the case when no suitable room is found
-    if (roomWithKeyId && roomWithKeyId !== entranceRoomId) {
+    if (
+      roomWithKeyId &&
+      roomWithKeyId !== entranceRoomId &&
+      roomWithKeyId !== roomWithLockedDoor.id
+    ) {
       // Update the room with the key
       let roomWithKey = rooms[roomWithKeyId];
       roomWithKey.hasKeyForRoomId = roomWithLockedDoor.id;
+      roomWithKey.roomType = 'key';
 
       // Update the room with the locked door
       roomWithLockedDoor.hasKeyInRoomId = roomWithKeyId;
@@ -402,11 +428,16 @@ export function addDungeonDetails(dungeonData) {
       // Assign the boss room, prioritizing unlocked paths
       let bossRoomId = findFurthestLeafNode(
         mainLockedDoor.to,
-        new Set([mainLockedDoor.from]),
+        new Set([mainLockedDoor.from, entranceRoomId, roomWithKeyId]),
         graph,
-        null, // No need to exclude doors here
+        null,
       );
-      assignBossRoom(bossRoomId, rooms);
+
+      assignBossRoom(bossRoomId, rooms, [
+        entranceRoomId,
+        roomWithLockedDoor.id,
+        roomWithKeyId,
+      ]);
 
       // Assign setback room on the path from entrance to key room
       let pathToKeyRoom = findShortestPath(
@@ -426,29 +457,27 @@ export function addDungeonDetails(dungeonData) {
       // Assign the boss room without considering the locked door
       let bossRoomId = findFurthestLeafNode(
         entranceRoomId,
-        new Set(),
+        new Set([entranceRoomId]),
         graph,
         null,
       );
-      assignBossRoom(bossRoomId, rooms);
+
+      assignBossRoom(bossRoomId, rooms, [entranceRoomId]);
 
       // Assign setback room on the path from entrance to boss room
       let pathToBossRoom = findShortestPath(graph, entranceRoomId, bossRoomId);
       assignSetbackRoom(pathToBossRoom, rooms);
     }
   } else {
-    // No main locked door, so assign bossRoom to furthest node from entrance
-
-    // Find the furthest room from the entrance
+    // No main locked door, or it's connected to entrance; assign boss room
     let bossRoomId = findFurthestLeafNode(
       entranceRoomId,
-      new Set(),
+      new Set([entranceRoomId]),
       graph,
       null,
     );
 
-    // Assign bossRoom: true
-    assignBossRoom(bossRoomId, rooms);
+    assignBossRoom(bossRoomId, rooms, [entranceRoomId]);
 
     // Assign setback room on the path from entrance to boss room
     let pathToBossRoom = findShortestPath(graph, entranceRoomId, bossRoomId);
@@ -467,7 +496,7 @@ export function addDungeonDetails(dungeonData) {
   }
 }
 
-// Helper function to assign setback room
+// Helper function to assign setback room (unchanged)
 function assignSetbackRoom(path, rooms) {
   if (!path || path.length < 3) return; // Not enough rooms to assign a setback room
 

@@ -45,7 +45,13 @@ function roomsOverlap(room1, room2) {
 // Global room ID counter
 let nextRoomId = 1; // Reset the ID counter before generating the dungeon
 
-function generateTree(room, existingRooms = [], depth = 0) {
+function generateTree(
+  room,
+  existingRooms = [],
+  depth = 0,
+  lockedDoorPlacedAtDepth1 = false,
+  maxDepthBeyondLockedOrSecretDoor = null,
+) {
   // Assign an ID to the current room if it doesn't have one
   if (!room.id) {
     room.id = nextRoomId++;
@@ -58,18 +64,125 @@ function generateTree(room, existingRooms = [], depth = 0) {
     return; // Room already processed
   }
 
-  if (depth > 3) {
+  // If maxDepthBeyondLockedOrSecretDoor is set and we've reached it, stop recursion
+  if (
+    maxDepthBeyondLockedOrSecretDoor !== null &&
+    depth > maxDepthBeyondLockedOrSecretDoor
+  ) {
     // Remove all doorways except the one leading back to the parent
     room.doorways = room.doorways.filter((d) => d.fromParent);
     return;
   }
 
+  if (depth > 5) {
+    // Limit overall dungeon depth
+    room.doorways = room.doorways.filter((d) => d.fromParent);
+    return;
+  }
+
+  // Determine if we must place the locked door in this room
+  let mustPlaceLockedDoor = false;
+  if (depth === 1 && !lockedDoorPlacedAtDepth1) {
+    mustPlaceLockedDoor = true;
+  }
+
+  // Initialize a variable to keep track of locked or secret doorways
+  let hasLockedOrSecretDoor = room.doorways.some(
+    (d) => d.type === 'locked-door' || d.type === 'secret',
+  );
+
+  // Generate additional doorways in the current room (excluding fromParent doorway)
+  let minAdditionalDoorways = 0;
+  let maxAdditionalDoorways = 2;
+  let numAdditionalDoorways =
+    Math.floor(
+      Math.random() * (maxAdditionalDoorways - minAdditionalDoorways + 1),
+    ) + minAdditionalDoorways;
+
+  // If we must place a locked door, ensure at least one additional doorway
+  if (mustPlaceLockedDoor && numAdditionalDoorways === 0) {
+    numAdditionalDoorways = 1;
+  }
+
+  // Get available sides excluding the one connected to the parent
+  const connectedSides = room.doorways
+    .filter((d) => d.fromParent)
+    .map((d) => d.side);
+
+  const availableSides = ['top', 'right', 'bottom', 'left'].filter(
+    (side) => !connectedSides.includes(side),
+  );
+
+  // Randomly select sides for additional doorways
+  const sidesForDoorways = availableSides
+    .sort(() => Math.random() - 0.5)
+    .slice(0, numAdditionalDoorways);
+
+  sidesForDoorways.forEach((side) => {
+    const maxPosition =
+      side === 'top' || side === 'bottom' ? room.width - 2 : room.height - 2;
+    if (maxPosition > 0) {
+      const position = Math.floor(Math.random() * maxPosition) + 1;
+
+      let selectedType;
+
+      // Logic for placing the locked door in rooms adjacent to entrance
+      if (mustPlaceLockedDoor) {
+        selectedType = 'locked-door';
+        mustPlaceLockedDoor = false;
+        hasLockedOrSecretDoor = true;
+        lockedDoorPlacedAtDepth1 = true;
+      } else {
+        // Define available doorway types
+        let availableTypes = [
+          { type: 'door', weight: 30 },
+          { type: 'corridor', weight: 25 },
+          { type: 'stairs', weight: 15 },
+          { type: 'merged', weight: 5 },
+        ];
+
+        // For depth > 1, allow additional locked or secret doors that lead to one room
+        if (depth > 1 && !hasLockedOrSecretDoor) {
+          availableTypes.push({ type: 'locked-door', weight: 10 });
+          availableTypes.push({ type: 'secret', weight: 10 });
+        }
+
+        // Compute total weight
+        const totalWeight = availableTypes.reduce(
+          (sum, entry) => sum + entry.weight,
+          0,
+        );
+
+        // Randomly select a type based on weights
+        const randomValue = Math.random() * totalWeight;
+        let cumulativeWeight = 0;
+        selectedType = 'door'; // default
+
+        for (const entry of availableTypes) {
+          cumulativeWeight += entry.weight;
+          if (randomValue < cumulativeWeight) {
+            selectedType = entry.type;
+            break;
+          }
+        }
+
+        // If we selected a locked door or secret door
+        if (selectedType === 'locked-door' || selectedType === 'secret') {
+          hasLockedOrSecretDoor = true;
+        }
+      }
+
+      const doorwayData = { side, position, type: selectedType };
+      room.doorways.push(doorwayData);
+    }
+  });
+
+  // Now, process each doorway in the room (excluding fromParent doorways)
   const doorways = room.doorways || [];
 
   // Keep track of doorways that successfully led to child rooms
   const successfulDoorways = [];
 
-  // Process doorways that are not marked as fromParent
   for (let i = 0; i < doorways.length; i++) {
     const doorway = doorways[i];
 
@@ -99,28 +212,23 @@ function generateTree(room, existingRooms = [], depth = 0) {
     }
 
     // Gap between rooms
-    let gap = 1; // Default gap is 1 tile
-
-    // If the connection is 'merged', set gap to 0
-    if (doorway.type === 'merged') {
-      gap = 0;
-    }
+    let gap = doorway.type === 'merged' ? 0 : 1;
 
     // Calculate the child room's position with gap
     let x = room.x;
     let y = room.y;
 
     if (parentDoorwaySide === 'top') {
-      y = room.y - height - gap; // Place child room above with gap
+      y = room.y - height - gap;
       x = room.x + doorway.position - childDoorwayPosition;
     } else if (parentDoorwaySide === 'bottom') {
-      y = room.y + room.height + gap; // Place child room below with gap
+      y = room.y + room.height + gap;
       x = room.x + doorway.position - childDoorwayPosition;
     } else if (parentDoorwaySide === 'left') {
-      x = room.x - width - gap; // Place child room to the left with gap
+      x = room.x - width - gap;
       y = room.y + doorway.position - childDoorwayPosition;
     } else if (parentDoorwaySide === 'right') {
-      x = room.x + room.width + gap; // Place child room to the right with gap
+      x = room.x + room.width + gap;
       y = room.y + doorway.position - childDoorwayPosition;
     }
 
@@ -134,98 +242,11 @@ function generateTree(room, existingRooms = [], depth = 0) {
     const childDoorwayToParent = {
       side: oppositeSide,
       position: childDoorwayPosition,
-      fromParent: true, // Mark to avoid processing it again
-      type: parentDoorwayType, // Ensure the type is consistent
+      fromParent: true,
+      type: parentDoorwayType,
     };
 
     childDoorways.push(childDoorwayToParent);
-
-    // For merged connections, both rooms need to know about the merged side
-    if (parentDoorwayType === 'merged') {
-      // Mark the sides as merged in both rooms
-      doorway.merged = true; // In the parent room's doorway
-      childDoorwayToParent.merged = true; // In the child room's doorway
-    }
-
-    // Determine the number of additional doorways to add
-    const minAdditionalDoorways = 0;
-    const maxAdditionalDoorways = 2;
-    const numAdditionalDoorways =
-      Math.floor(
-        Math.random() * (maxAdditionalDoorways - minAdditionalDoorways + 1),
-      ) + minAdditionalDoorways;
-
-    // Initialize a variable to keep track of locked or secret doorways
-    let hasLockedOrSecretDoor = false;
-
-    // Get available sides excluding the one connected to the parent
-    const availableSides = ['top', 'right', 'bottom', 'left'].filter(
-      (side) => side !== oppositeSide,
-    );
-
-    // Randomly select sides for additional doorways
-    const sidesForDoorways = availableSides
-      .sort(() => Math.random() - 0.5)
-      .slice(0, numAdditionalDoorways);
-
-    sidesForDoorways.forEach((side) => {
-      const maxPosition =
-        side === 'top' || side === 'bottom' ? width - 2 : height - 2;
-      if (maxPosition > 0) {
-        const position = Math.floor(Math.random() * maxPosition) + 1;
-
-        // Define available doorway types based on whether the room already has a locked or secret door
-        let availableTypes;
-        if (!hasLockedOrSecretDoor) {
-          availableTypes = [
-            { type: 'door', weight: 30 },
-            { type: 'locked-door', weight: 15 },
-            { type: 'corridor', weight: 25 },
-            { type: 'stairs', weight: 15 },
-            { type: 'secret', weight: 10 },
-            { type: 'merged', weight: 5 },
-          ];
-        } else {
-          // Exclude 'locked-door' and 'secret' if one already exists
-          availableTypes = [
-            { type: 'door', weight: 30 },
-            { type: 'corridor', weight: 25 },
-            { type: 'stairs', weight: 15 },
-            { type: 'merged', weight: 5 },
-          ];
-        }
-
-        // Compute total weight
-        const totalWeight = availableTypes.reduce(
-          (sum, entry) => sum + entry.weight,
-          0,
-        );
-
-        // Randomly select a type based on weights
-        const randomValue = Math.random() * totalWeight;
-        let cumulativeWeight = 0;
-        let selectedType = 'door'; // default
-
-        for (const entry of availableTypes) {
-          cumulativeWeight += entry.weight;
-          if (randomValue < cumulativeWeight) {
-            selectedType = entry.type;
-            break;
-          }
-        }
-
-        // If the selected type is 'locked-door' or 'secret', set the flag
-        if (selectedType === 'locked-door' || selectedType === 'secret') {
-          hasLockedOrSecretDoor = true;
-        }
-
-        const doorwayData = { side, position, type: selectedType };
-
-        // We will assign connectedRoomId later after creating the new room
-
-        childDoorways.push(doorwayData);
-      }
-    });
 
     // Create the new room without assigning an ID yet
     const newRoom = {
@@ -251,18 +272,44 @@ function generateTree(room, existingRooms = [], depth = 0) {
       doorway.connectedRoomId = newRoom.id;
 
       // In the child doorway back to the parent
-      childDoorwayToParent.connectedRoomId = room.id; // room.id is the parent room's ID
+      childDoorwayToParent.connectedRoomId = room.id;
+
+      // Determine the max depth beyond this room
+      let childMaxDepthBeyondLockedOrSecretDoor =
+        maxDepthBeyondLockedOrSecretDoor;
+
+      // If this doorway is a locked door or secret door
+      if (doorway.type === 'locked-door' || doorway.type === 'secret') {
+        if (depth === 1 && doorway.type === 'locked-door') {
+          // For the locked door adjacent to the entrance, allow unlimited depth
+          childMaxDepthBeyondLockedOrSecretDoor = null;
+        } else {
+          // For other locked or secret doors, limit the depth to current depth + 1
+          childMaxDepthBeyondLockedOrSecretDoor = depth + 1;
+        }
+      }
+
+      // If the doorway is a 'locked-door' leading to one room, with a 50% chance, make it a 'secret' door
+      if (
+        doorway.type === 'locked-door' &&
+        childMaxDepthBeyondLockedOrSecretDoor !== null &&
+        Math.random() < 0.5
+      ) {
+        doorway.type = 'secret';
+        childDoorwayToParent.type = 'secret';
+      }
 
       // Proceed to generate child rooms
-      generateTree(newRoom, existingRooms, depth + 1);
+      generateTree(
+        newRoom,
+        existingRooms,
+        depth + 1,
+        lockedDoorPlacedAtDepth1,
+        childMaxDepthBeyondLockedOrSecretDoor,
+      );
 
-      // If the child room has at least one doorway (besides the one back to parent), keep the doorway
-      if (newRoom.doorways.some((d) => !d.fromParent)) {
-        successfulDoorways.push(doorway);
-      } else {
-        // Child room is a dead end; decide whether to keep the doorway
-        successfulDoorways.push(doorway);
-      }
+      // Keep the doorway
+      successfulDoorways.push(doorway);
     } else {
       // Overlaps, remove the doorway from the parent room
       // We don't add this doorway to successfulDoorways
@@ -275,6 +322,66 @@ function generateTree(room, existingRooms = [], depth = 0) {
   );
 }
 
+// Union-Find class for grouping merged rooms
+class UnionFind {
+  constructor() {
+    this.parent = {};
+  }
+
+  find(u) {
+    if (this.parent[u] === undefined) {
+      this.parent[u] = u;
+    }
+    if (this.parent[u] !== u) {
+      this.parent[u] = this.find(this.parent[u]); // Path compression
+    }
+    return this.parent[u];
+  }
+
+  union(u, v) {
+    const pu = this.find(u);
+    const pv = this.find(v);
+    if (pu !== pv) {
+      this.parent[pu] = pv;
+    }
+  }
+}
+
+// Function to find adjacent room
+function findAdjacentRoom(room, doorway, rooms) {
+  const side = doorway.side;
+  const position = doorway.position;
+
+  let adjacentX = room.x;
+  let adjacentY = room.y;
+
+  if (side === 'top') {
+    adjacentY = room.y - 1; // Directly above
+    adjacentX = room.x + position;
+  } else if (side === 'bottom') {
+    adjacentY = room.y + room.height; // Directly below
+    adjacentX = room.x + position;
+  } else if (side === 'left') {
+    adjacentX = room.x - 1; // Directly to the left
+    adjacentY = room.y + position;
+  } else if (side === 'right') {
+    adjacentX = room.x + room.width; // Directly to the right
+    adjacentY = room.y + position;
+  }
+
+  // Find the adjacent room in rooms
+  return rooms.find((r) => {
+    if (side === 'top' || side === 'bottom') {
+      return r.y === adjacentY && r.x <= adjacentX && adjacentX < r.x + r.width;
+    } else {
+      return (
+        r.x === adjacentX && r.y <= adjacentY && adjacentY < r.y + r.height
+      );
+    }
+  });
+}
+
+// Main dungeon generation function
 export function generateDungeon() {
   // Reset nextRoomId before generating the dungeon
   nextRoomId = 1;
@@ -286,77 +393,38 @@ export function generateDungeon() {
     y: 1,
     width: 5,
     height: 4,
-    doorways: [
-      { side: 'top', position: 1, type: 'door' },
-      { side: 'right', position: 2, type: 'corridor' },
-      { side: 'bottom', position: 3, type: 'locked-door' },
-    ],
+    doorways: [],
   };
 
-  generateTree(initialRoom, existingRooms);
+  // Generate initial doorways for the entrance room
+  // We don't want a locked door or secret door here, so we can proceed normally
+  const entranceDoorways = [];
 
-  // Union-Find class for grouping merged rooms
-  class UnionFind {
-    constructor() {
-      this.parent = {};
+  const sides = ['top', 'right', 'bottom', 'left'];
+  const numDoorways = 3; // Number of doorways from the entrance
+  const sidesForDoorways = sides
+    .sort(() => Math.random() - 0.5)
+    .slice(0, numDoorways);
+
+  sidesForDoorways.forEach((side) => {
+    const maxPosition =
+      side === 'top' || side === 'bottom'
+        ? initialRoom.width - 2
+        : initialRoom.height - 2;
+    if (maxPosition > 0) {
+      const position = Math.floor(Math.random() * maxPosition) + 1;
+      entranceDoorways.push({ side, position, type: 'door' });
     }
+  });
 
-    find(u) {
-      if (this.parent[u] === undefined) {
-        this.parent[u] = u;
-      }
-      if (this.parent[u] !== u) {
-        this.parent[u] = this.find(this.parent[u]); // Path compression
-      }
-      return this.parent[u];
-    }
+  initialRoom.doorways = entranceDoorways;
 
-    union(u, v) {
-      const pu = this.find(u);
-      const pv = this.find(v);
-      if (pu !== pv) {
-        this.parent[pu] = pv;
-      }
-    }
-  }
+  // Generate the dungeon starting from the initial room
+  generateTree(initialRoom, existingRooms, 0, false, null);
 
-  // Function to find adjacent room
-  function findAdjacentRoom(room, doorway, rooms) {
-    const side = doorway.side;
-    const position = doorway.position;
+  // After generating existingRooms, proceed with merging rooms and adjusting IDs
 
-    let adjacentX = room.x;
-    let adjacentY = room.y;
-
-    if (side === 'top') {
-      adjacentY = room.y - 1; // Directly above
-      adjacentX = room.x + position;
-    } else if (side === 'bottom') {
-      adjacentY = room.y + room.height; // Directly below
-      adjacentX = room.x + position;
-    } else if (side === 'left') {
-      adjacentX = room.x - 1; // Directly to the left
-      adjacentY = room.y + position;
-    } else if (side === 'right') {
-      adjacentX = room.x + room.width; // Directly to the right
-      adjacentY = room.y + position;
-    }
-
-    // Find the adjacent room in rooms
-    return rooms.find((r) => {
-      if (side === 'top' || side === 'bottom') {
-        return (
-          r.y === adjacentY && r.x <= adjacentX && adjacentX < r.x + r.width
-        );
-      } else {
-        return (
-          r.x === adjacentX && r.y <= adjacentY && adjacentY < r.y + r.height
-        );
-      }
-    });
-  }
-
-  // After generating existingRooms
+  // Union-Find instance for grouping merged rooms
   const uf = new UnionFind();
 
   // Iterate over rooms to union merged rooms
@@ -396,7 +464,7 @@ export function generateDungeon() {
         id: nextMergedRoomId++,
         type: 'merged',
         sections: roomsInGroup,
-        doorways: [], // You can handle doorways at the merged room level if needed
+        doorways: [], // Doorways will be handled below
       };
       newRooms.push(mergedRoom);
     }
@@ -405,7 +473,6 @@ export function generateDungeon() {
   // Replace existingRooms with newRooms
   existingRooms = newRooms;
 
-  // After merging rooms and before using existingRooms
   // Reassign IDs to ensure they are sequential
   let newRoomIdCounter = 1;
   const oldIdToNewId = {};

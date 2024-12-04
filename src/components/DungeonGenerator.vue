@@ -522,7 +522,6 @@ function adjustMapScrollToPosition(roomX, roomY) {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  height: 100%;
   font-size: small;
 }
 
