@@ -53,9 +53,12 @@ ${dungeonOverview}
 **Short Room Description (includes size, exits, and any notable features):**
 ${shortDescription}
 
-**Connected Rooms:**
-This room is connected to the following rooms: ${connectedRoomsInfo}
-
+${
+  connectedRoomsInfo !== ''
+    ? `**Connected Rooms:** 
+  This room is connected to the following rooms: ${connectedRoomsInfo}`
+    : ''
+}
 ${roomNameSection}${roomSummarySection}${npcSection}**Guidelines:**
 
 - **Room Type Determination:**

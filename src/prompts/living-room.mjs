@@ -16,8 +16,12 @@ ${dungeonOverview}
 ${shortDescription}
 No need to use the room's shape in the description if it's not relevant to the room's function. Just use the shape to inform other details. For example if the room is long, you could say that there are many beds lined up against the walls.
 
-**Connected Rooms:**
-This room is connected to the following rooms: ${connectedRoomsInfo}
+${
+  connectedRoomsInfo !== ''
+    ? `**Connected Rooms:** 
+  This room is connected to the following rooms: ${connectedRoomsInfo}`
+    : ''
+}
 
 **Guidelines:**
 

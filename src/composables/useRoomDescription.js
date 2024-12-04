@@ -105,14 +105,19 @@ export function useRoomDescription() {
     dungeonOverview,
     shortDescription,
     connectedRoomsInfo,
-    formRoomSummary,
+    formRoomName = '',
+    formRoomSummary = '',
+    npcString = '',
   }) {
     const prompt = generateEntrancePrompt(
       dungeonOverview,
       shortDescription,
       connectedRoomsInfo,
+      formRoomName,
       formRoomSummary,
+      npcString,
     );
+    console.log('Prompt:', prompt);
     const response = await generateGptResponse(
       prompt,
       validateEntranceResponse,
@@ -151,15 +156,27 @@ export function useRoomDescription() {
 
   // Boss Room Handler
   async function handleBossRoom({
+    room,
+    currentDungeon,
     dungeonOverview,
     shortDescription,
     connectedRoomsInfo,
+    formRoomName = '',
+    formRoomSummary = '',
+    npcString = '',
   }) {
+    const roomName = formRoomName || room.name || '';
+    const roomSummary = formRoomSummary || room.oneSentenceSummary || '';
+
     const prompt = generateBossRoomPrompt(
       dungeonOverview,
       shortDescription,
       connectedRoomsInfo,
+      roomName,
+      roomSummary,
+      npcString,
     );
+    console.log('Prompt:', prompt);
     const response = await generateGptResponse(
       prompt,
       validateBossRoomResponse,
@@ -171,15 +188,27 @@ export function useRoomDescription() {
 
   // Setback Room Handler
   async function handleSetbackRoom({
+    room,
+    currentDungeon,
     dungeonOverview,
     shortDescription,
     connectedRoomsInfo,
+    formRoomName = '',
+    formRoomSummary = '',
+    npcString = '',
   }) {
+    const roomName = formRoomName || room.name || '';
+    const roomSummary = formRoomSummary || room.oneSentenceSummary || '';
+
     const prompt = generateSetbackRoomPrompt(
       dungeonOverview,
       shortDescription,
       connectedRoomsInfo,
+      roomName,
+      roomSummary,
+      npcString,
     );
+    console.log('Prompt:', prompt);
     const response = await generateGptResponse(
       prompt,
       validateSetbackRoomResponse,
@@ -196,7 +225,13 @@ export function useRoomDescription() {
     dungeonOverview,
     shortDescription,
     connectedRoomsInfo,
+    formRoomName = '',
+    formRoomSummary = '',
+    npcString = '',
   }) {
+    const roomName = formRoomName || room.name || '';
+    const roomSummary = formRoomSummary || room.oneSentenceSummary || '';
+
     const connectedRoomSummary =
       currentDungeon.rooms.find(
         (r) => r.id === room.doorways[0].connectedRoomId,
@@ -206,6 +241,9 @@ export function useRoomDescription() {
       shortDescription,
       connectedRoomsInfo,
       connectedRoomSummary,
+      roomName,
+      roomSummary,
+      npcString,
     );
     console.log('Prompt:', prompt);
     const response = await generateGptResponse(
@@ -217,17 +255,27 @@ export function useRoomDescription() {
     return { roomDescription, contentArray };
   }
 
+  // Locked Room Handler
   async function handleLockedRoom({
     room,
     currentDungeon,
     dungeonOverview,
     shortDescription,
     connectedRoomsInfo,
+    formRoomName = '',
+    formRoomSummary = '',
+    npcString = '',
   }) {
+    const roomName = formRoomName || room.name || '';
+    const roomSummary = formRoomSummary || room.oneSentenceSummary || '';
+
     const prompt = generateLockedRoomPrompt(
       dungeonOverview,
       shortDescription,
       connectedRoomsInfo,
+      roomName,
+      roomSummary,
+      npcString,
     );
     console.log('Prompt:', prompt);
     const response = await generateGptResponse(
@@ -241,10 +289,12 @@ export function useRoomDescription() {
 
   // Living Room Handler
   async function handleLivingRoom({
+    room,
+    currentDungeon,
     dungeonOverview,
     shortDescription,
     connectedRoomsInfo,
-    currentDungeon,
+    npcString = '',
   }) {
     const existingRooms = currentDungeon.roomNames.join(', ');
     const prompt = generateLivingRoomPrompt(
@@ -252,6 +302,7 @@ export function useRoomDescription() {
       shortDescription,
       existingRooms,
       connectedRoomsInfo,
+      npcString,
     );
     console.log('Prompt:', prompt);
     const response = await generateGptResponse(
@@ -265,14 +316,18 @@ export function useRoomDescription() {
 
   // Connecting Room Handler
   async function handleConnectingRoom({
+    room,
+    currentDungeon,
     dungeonOverview,
     shortDescription,
     connectedRoomsInfo,
+    npcString = '',
   }) {
     const prompt = generateConnectingRoomPrompt(
       dungeonOverview,
       shortDescription,
       connectedRoomsInfo,
+      npcString,
     );
     console.log('Prompt:', prompt);
     const response = await generateGptResponse(
@@ -286,14 +341,18 @@ export function useRoomDescription() {
 
   // Purpose Room Handler
   async function handlePurposeRoom({
+    room,
+    currentDungeon,
     dungeonOverview,
     shortDescription,
     connectedRoomsInfo,
+    npcString = '',
   }) {
     const prompt = generatePurposeRoomPrompt(
       dungeonOverview,
       shortDescription,
       connectedRoomsInfo,
+      npcString,
     );
     console.log('Prompt:', prompt);
     const response = await generateGptResponse(
@@ -404,10 +463,10 @@ export function useRoomDescription() {
     boss: handleBossRoom,
     setback: handleSetbackRoom,
     secret: handleSecretRoom,
+    locked: handleLockedRoom,
+    purpose: handlePurposeRoom,
     living: handleLivingRoom,
     connecting: handleConnectingRoom,
-    purpose: handlePurposeRoom,
-    locked: handleLockedRoom,
     // Add other room types as needed
   };
 
@@ -415,9 +474,9 @@ export function useRoomDescription() {
   async function generateRoomDescription(
     currentDungeon,
     selectedRoomId,
-    formRoomName,
-    formRoomSummary,
-    npcData,
+    formRoomName = '',
+    formRoomSummary = '',
+    npcData = null,
   ) {
     try {
       if (!currentDungeon || selectedRoomId === null) {
@@ -456,21 +515,40 @@ export function useRoomDescription() {
 
       let roomDescription = {};
       let contentArray = [];
+      let npcString = '';
+      if (npcData && npcData.npc_string) {
+        npcString = npcData.npc_string;
+      }
 
-      // **Step 3: Generate Prompt Based on Room Type with Summaries**
+      // **Step 3: Generate Prompt Based on Room Type and Inputs**
+
+      // First, check for special room types
       if (isEntrance) {
         ({ roomDescription, contentArray } = await handleEntranceRoom({
           dungeonOverview,
           shortDescription,
           connectedRoomsInfo,
+          formRoomName,
           formRoomSummary,
+          npcString,
+        }));
+      } else if (
+        ['setback', 'locked', 'boss', 'secret'].includes(room.roomType)
+      ) {
+        // Use specific handler for these room types
+        const handler = roomTypeHandlers[room.roomType];
+        ({ roomDescription, contentArray } = await handler({
+          room,
+          currentDungeon,
+          dungeonOverview,
+          shortDescription,
+          connectedRoomsInfo,
+          formRoomName,
+          formRoomSummary,
+          npcString,
         }));
       } else if (formRoomName || formRoomSummary) {
-        let npcString = '';
-        if (npcData && npcData.npc_string) {
-          npcString = npcData.npc_string;
-        }
-
+        // Use custom room prompt
         ({ roomDescription, contentArray } = await handleCustomRoom({
           dungeonOverview,
           shortDescription,
@@ -479,7 +557,8 @@ export function useRoomDescription() {
           formRoomSummary,
           npcString,
         }));
-      } else if (room.roomType in roomTypeHandlers) {
+      } else if (['purpose', 'living', 'connecting'].includes(room.roomType)) {
+        // Use specific handlers for these room types without form inputs
         const handler = roomTypeHandlers[room.roomType];
         ({ roomDescription, contentArray } = await handler({
           room,
@@ -487,6 +566,7 @@ export function useRoomDescription() {
           dungeonOverview,
           shortDescription,
           connectedRoomsInfo,
+          npcString,
         }));
       } else {
         console.error('Unknown room type:', room.roomType);

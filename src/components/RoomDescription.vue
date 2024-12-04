@@ -50,7 +50,7 @@
         </cdr-button>
       </div>
     </div>
-    <div v-if="!dungeonStore.isMapSidebarCollapsed && room && room.doorways.length">
+    <div v-if="!dungeonStore.isMapSidebarCollapsed && room && room.doorways && room.doorways.length">
       <h3>Connecting Rooms:</h3>
       <cdr-list class="connecting-room-list">
         <li class="connecting-room" v-for="doorway in room.doorways" :key="doorway.connectedRoomId">
@@ -89,6 +89,9 @@ const activeView = ref('description');
 
 // **Define getRoomName Method**
 function getRoomName(roomId) {
+  if (!dungeonStore.currentDungeon || !dungeonStore.currentDungeon.rooms) {
+    return `Room ${roomId}`;
+  }
   const connectedRoom = dungeonStore.currentDungeon.rooms.find(r => r.id === roomId);
   return connectedRoom ? connectedRoom.name || `Room ${roomId}` : `Room ${roomId}`;
 }
@@ -98,18 +101,36 @@ function selectConnectedRoom(roomId) {
   dungeonStore.selectedRoomId = roomId;
 }
 
-// Watch for changes in selectedRoomId
+// Watch for changes in selectedRoomId or currentDungeon
 watch(
   () => dungeonStore.selectedRoomId,
   (newVal) => {
     if (dungeonStore.currentDungeon && newVal !== null) {
       loadRoomData(newVal);
+    } else {
+      return;
+    }
+  },
+  { immediate: true }
+);
+
+watch(
+  () => dungeonStore.currentDungeon,
+  (newVal) => {
+    if (newVal && dungeonStore.selectedRoomId !== null) {
+      loadRoomData(dungeonStore.selectedRoomId);
+    } else {
+      return;
     }
   },
   { immediate: true }
 );
 
 function loadRoomData(roomId) {
+  if (!dungeonStore.currentDungeon || !dungeonStore.currentDungeon.rooms) {
+    return;
+  }
+
   room.value = dungeonStore.currentDungeon.rooms.find((room) => room.id === roomId);
   if (room.value) {
     contentArray.value = room.value.contentArray || [
@@ -130,6 +151,11 @@ function loadRoomData(roomId) {
 }
 
 async function generateDescription() {
+  if (!dungeonStore.currentDungeon) {
+    console.error('No current dungeon selected.');
+    return;
+  }
+
   if (selectedNPCName.value === 'None') {
     selectedNPCName.value = null;
   }
@@ -174,8 +200,11 @@ async function generateDescription() {
   loadRoomData(dungeonStore.selectedRoomId);
 }
 
-
 onMounted(() => {
+  if (!dungeonStore.currentDungeon || !dungeonStore.currentDungeon.rooms || dungeonStore.currentDungeon.rooms.length === 0) {
+    return;
+  }
+
   if (dungeonStore.selectedRoomId === null) {
     dungeonStore.selectedRoomId = dungeonStore.currentDungeon.rooms[0].id;
   }

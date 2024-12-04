@@ -23,8 +23,12 @@ ${dungeonOverview}
 **Room Description:**
 ${roomDescription}
 
-**Connected Rooms:**
-This room is connected to the following rooms: ${connectedRoomsInfo}
+${
+  connectedRoomsInfo !== ''
+    ? `**Connected Rooms:** 
+  This room is connected to the following rooms: ${connectedRoomsInfo}`
+    : ''
+}
 
 ${secretRoomSection}**Guidelines:**
 

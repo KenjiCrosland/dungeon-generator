@@ -67,6 +67,7 @@ export const useDungeonStore = defineStore('dungeon', () => {
   }
 
   function deleteDungeon(dungeonId) {
+    activeTabIndex.value = 0;
     const index = dungeons.value.findIndex(
       (dungeon) => dungeon.id === dungeonId,
     );
@@ -253,7 +254,7 @@ export const useDungeonStore = defineStore('dungeon', () => {
       const completeNPC = { ...npc, ...npcData, ...relationshipsData };
       completeNPC.opened = true; // Open the accordion after generating full description
       completeNPC.complete = true; // Mark the NPC as complete
-      completeNPC.npc_string = buildNPCString(npc);
+      completeNPC.npc_string = buildNPCString(completeNPC);
 
       // Update the NPC in the current dungeon's NPC list
       currentDungeon.value.npcs.splice(npcIndex, 1, completeNPC);
@@ -316,22 +317,6 @@ export const useDungeonStore = defineStore('dungeon', () => {
       npcStringParts.push(npc.character_secret);
     }
 
-    if (npc.relationships && Object.keys(npc.relationships).length > 0) {
-      // Concatenate relationships into a single string
-      const relationshipsString = Object.entries(npc.relationships)
-        .map(
-          ([relatedNpcName, relationship]) =>
-            `${relatedNpcName}: ${relationship}`,
-        )
-        .join('\n');
-      npcStringParts.push(relationshipsString);
-    }
-
-    if (npc.roleplaying_tips) {
-      npcStringParts.push(npc.roleplaying_tips);
-    }
-
-    // Join all parts with newlines or any other delimiter you prefer
     return npcStringParts.join('\n');
   }
 

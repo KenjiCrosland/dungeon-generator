@@ -1,5 +1,10 @@
 <template>
   <div class="app-container">
+    <cdr-button class="delete-dungeon-button" size="small"
+      @click="dungeonStore.deleteDungeon(dungeonStore.currentDungeonId)"
+      style="position: absolute; top: 10px; right: 10px;">
+      Delete Dungeon
+    </cdr-button>
     <!-- Sidebar Toggle Button -->
     <cdr-button modifier="secondary" class="sidebar-toggle" @click="isSidebarVisible = !isSidebarVisible"
       v-show="windowWidth <= 1020">
