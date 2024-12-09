@@ -565,6 +565,7 @@ export function useRoomDescription() {
     formRoomName = '',
     formRoomSummary = '',
     npcData = null,
+    roomTypeOptions = { setback: false, boss: false },
   ) {
     try {
       if (!currentDungeon || selectedRoomId === null) {
@@ -579,6 +580,13 @@ export function useRoomDescription() {
       if (!room) {
         console.error('Selected room not found');
         return;
+      }
+
+      if (roomTypeOptions.setback) {
+        room.roomType = 'setback';
+      }
+      if (roomTypeOptions.boss) {
+        room.roomType = 'boss';
       }
 
       const isEntrance = selectedRoomId === 1;

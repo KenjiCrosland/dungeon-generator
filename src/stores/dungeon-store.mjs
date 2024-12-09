@@ -31,7 +31,7 @@ export const useDungeonStore = defineStore('dungeon', () => {
   // NPC-related state
   const npcName = ref('');
   const npcShortDescription = ref('');
-  const currentlyLoadingNPC = ref(false);
+  const currentlyLoadingNPCs = ref({}); // Tracks loading state per NPC
 
   // Getters
   const currentDungeon = computed(() => {
@@ -277,12 +277,12 @@ export const useDungeonStore = defineStore('dungeon', () => {
     }
 
     try {
-      currentlyLoadingNPC.value = true;
+      currentlyLoadingNPCs.value[npcIndex] = true; // Set loading state for this NPC
 
       const npc = currentDungeon.value.npcs[npcIndex];
       if (!npc) {
         console.error('NPC not found');
-        currentlyLoadingNPC.value = false;
+        currentlyLoadingNPCs.value[npcIndex] = false;
         return;
       }
 
@@ -326,13 +326,11 @@ export const useDungeonStore = defineStore('dungeon', () => {
       // Update the NPC in the current dungeon's NPC list
       currentDungeon.value.npcs.splice(npcIndex, 1, completeNPC);
 
-      currentlyLoadingNPC.value = false;
-
-      // Save the updated dungeons data
+      currentlyLoadingNPCs.value[npcIndex] = false; // Reset loading state
       saveDungeons();
     } catch (error) {
       console.error('Error generating dungeon NPC:', error);
-      currentlyLoadingNPC.value = false;
+      currentlyLoadingNPCs.value[npcIndex] = false; // Reset loading state on error
     }
   }
 
@@ -400,7 +398,7 @@ export const useDungeonStore = defineStore('dungeon', () => {
     activeTabIndex,
     npcName,
     npcShortDescription,
-    currentlyLoadingNPC,
+    currentlyLoadingNPCs,
 
     // Getters
     currentDungeon,

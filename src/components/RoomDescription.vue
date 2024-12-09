@@ -18,6 +18,16 @@
           Select an NPC to be present in this room.
         </template>
       </cdr-select>
+      <cdr-form-group label="Room Types">
+        <div style="display: 'flex'; align-content: 'center'">
+          <cdr-checkbox v-model="setbackRoom">
+            Setback Room {{ initialRoomType === 'setback' ? '(Recommended)' : '' }}
+          </cdr-checkbox>
+        </div>
+        <cdr-checkbox v-model="bossRoom">
+          Boss Room {{ initialRoomType === 'boss' ? '(Recommended)' : '' }}
+        </cdr-checkbox>
+      </cdr-form-group>
       <div class="generation-button">
         <cdr-button size="small" @click="generateDescription" modifier="dark">
           Generate Description
@@ -65,7 +75,7 @@
 
 <script setup>
 import { ref, watch, onMounted, computed } from 'vue';
-import { CdrButton, CdrList, CdrToggleGroup, CdrToggleButton, CdrInput, CdrSelect } from '@rei/cedar';
+import { CdrButton, CdrList, CdrToggleGroup, CdrToggleButton, CdrInput, CdrSelect, CdrFormGroup, CdrCheckbox, CdrTooltip, IconInformationStroke } from '@rei/cedar';
 import RoomSkeleton from './skeletons/RoomSkeleton.vue';
 import { useDungeonStore } from '../stores/dungeon-store.mjs';
 import { useRoomDescription } from '../composables/useRoomDescription.js';
@@ -86,6 +96,30 @@ const npcOptions = computed(() => {
 });
 const room = ref(null);
 const activeView = ref('description');
+
+const initialRoomType = room.value?.roomType || null;
+
+const setbackRoom = computed({
+  get() {
+    return room.value?.roomType === 'setback';
+  },
+  set(value) {
+    if (room.value) {
+      room.value.roomType = value ? 'setback' : null;
+    }
+  },
+});
+
+const bossRoom = computed({
+  get() {
+    return room.value?.roomType === 'boss';
+  },
+  set(value) {
+    if (room.value) {
+      room.value.roomType = value ? 'boss' : null;
+    }
+  },
+});
 
 // **Define getRoomName Method**
 function getRoomName(roomId) {
@@ -151,6 +185,10 @@ function loadRoomData(roomId) {
 }
 
 async function generateDescription() {
+  const roomTypeOptions = {
+    setback: setbackRoom.value,
+    boss: bossRoom.value,
+  };
   if (!dungeonStore.currentDungeon) {
     console.error('No current dungeon selected.');
     return;
@@ -193,6 +231,7 @@ async function generateDescription() {
     roomFormName.value,
     roomFormShortDescription.value,
     npcData,
+    roomTypeOptions
   );
 
   activeView.value = 'description';

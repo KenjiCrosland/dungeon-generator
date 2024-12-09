@@ -23,7 +23,7 @@
         <li v-for="(dungeon) in dungeonStore.dungeons" :key="dungeon.id"
           :class="{ active: dungeonStore.currentDungeonId === dungeon.id }">
           <button class="dungeon-button" @click="dungeonStore.selectDungeon(dungeon.id)">
-            <span>{{ dungeon.dungeonOverview.title }}</span>
+            <span>{{ dungeon.dungeonOverview.name }}</span>
           </button>
         </li>
         <li>
@@ -136,7 +136,7 @@
             <div class="dungeon-map-wrapper" ref="mapWrapper" @click="handleMapWrapperClick">
               <!-- Dungeon Map Container -->
               <div v-if="dungeonStore.currentDungeon" class="dungeon-map-container" ref="mapContainer">
-                <h4>{{ dungeonStore.currentDungeon.dungeonOverview.title }}</h4>
+                <h4 style="text-align: center">Map of {{ dungeonStore.currentDungeon.dungeonOverview.name }}</h4>
                 <div v-if="dungeonStore.currentDungeon.rooms">
                   <DungeonMap :rooms="dungeonStore.currentDungeon.rooms" @roomClicked="handleRoomClick" ref="dungeonMap"
                     :dungeonName="dungeonStore.currentDungeon.dungeonOverview.name" @mapClicked="handleMapClick" />
@@ -183,36 +183,37 @@
                 </div>
               </cdr-tooltip>
               <div>
-
-                <h2>{{ npc.name }}</h2>
-                <div v-if="npc.description_of_position">
-                  <div class="read-aloud-box">
-                    <p>{{ npc.read_aloud_description }}</p>
-                  </div>
-                  <p>{{ npc.description_of_position }}</p>
-                  <p>{{ npc.why_in_dungeon }}</p>
-                  <p>{{ npc.distinctive_features_or_mannerisms }}</p>
-                  <p>{{ npc.character_secret }}</p>
-                  <h3>Relationships</h3>
-                  <div v-for="(relationship, relatedNpcName) in npc.relationships" :key="relatedNpcName">
-                    <p><strong>{{ relatedNpcName }}:</strong> {{ relationship }}</p>
-                  </div>
-                  <h3>Roleplaying Tips</h3>
-                  <p>{{ npc.roleplaying_tips }}</p>
-                </div>
-
-                <div v-if="!npc.description_of_position && !dungeonStore.currentlyLoadingNPC">
-                  <p>{{ npc.short_description }}</p>
-                  <cdr-button @click="dungeonStore.generateDungeonNPC(index)"
-                    :disabled="dungeonStore.currentlyLoadingNPC">
-                    Generate Full Description
-                  </cdr-button>
-                </div>
-                <div v-if="dungeonStore.currentlyLoadingNPC">
+                <div v-if="dungeonStore.currentlyLoadingNPCs[index]">
                   <NPCSkeleton />
+                </div>
+                <div v-else>
+                  <h2>{{ npc.name }}</h2>
+                  <div v-if="npc.description_of_position">
+                    <div class="read-aloud-box">
+                      <p>{{ npc.read_aloud_description }}</p>
+                    </div>
+                    <p>{{ npc.description_of_position }}</p>
+                    <p>{{ npc.why_in_dungeon }}</p>
+                    <p>{{ npc.distinctive_features_or_mannerisms }}</p>
+                    <p>{{ npc.character_secret }}</p>
+                    <h3>Relationships</h3>
+                    <div v-for="(relationship, relatedNpcName) in npc.relationships" :key="relatedNpcName">
+                      <p><strong>{{ relatedNpcName }}:</strong> {{ relationship }}</p>
+                    </div>
+                    <h3>Roleplaying Tips</h3>
+                    <p>{{ npc.roleplaying_tips }}</p>
+                  </div>
+                  <div v-if="!npc.description_of_position">
+                    <p>{{ npc.short_description }}</p>
+                    <cdr-button @click="dungeonStore.generateDungeonNPC(index)"
+                      :disabled="dungeonStore.currentlyLoadingNPCs[index]">
+                      Generate Full Description
+                    </cdr-button>
+                  </div>
                 </div>
               </div>
             </cdr-accordion>
+
           </cdr-accordion-group>
 
           <h3>Add a New NPC</h3>
@@ -315,7 +316,7 @@ function handleDownloadMapClick() {
 }
 
 function deleteAllDungeons() {
-  const confirmed = window.confirm('Are you sure you want to delete all settings?');
+  const confirmed = window.confirm('Are you sure you want to delete all dungeons?');
   if (confirmed) {
     dungeonStore.deleteAllDungeons();
   }
@@ -543,7 +544,9 @@ function adjustMapScrollToPosition(roomX, roomY) {
 }
 
 .generate-button-container {
-  text-align: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
   margin-top: 2rem;
 }
 
