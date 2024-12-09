@@ -5,7 +5,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from 'vue';
+import { onMounted, ref, watch, defineExpose } from 'vue';
 const emit = defineEmits(['roomClicked', 'mapClicked']);
 
 const props = defineProps({
@@ -17,10 +17,23 @@ const props = defineProps({
     type: Number,
     default: 16, // Adjust tile size as needed
   },
+  dungeonName: {
+    type: String,
+    required: true,
+  },
 });
 
 const dungeonCanvas = ref(null);
 
+defineExpose({
+  downloadCanvasAsImage() {
+    const canvas = dungeonCanvas.value;
+    const link = document.createElement('a');
+    link.download = `${props.dungeonName}-map.png`;
+    link.href = canvas.toDataURL();
+    link.click();
+  },
+});
 const resizeCanvas = () => {
   const canvas = dungeonCanvas.value;
   const tileSize = props.tileSize;
@@ -61,6 +74,13 @@ const resizeCanvas = () => {
   // Store minX and minY to adjust the drawing positions
   canvas.minX = minX;
   canvas.minY = minY;
+};
+
+//add a background color to the canvas
+const drawBackground = (ctx) => {
+  const { width, height } = ctx.canvas;
+  ctx.fillStyle = '#f3f3e8'; // Light gray color for background
+  ctx.fillRect(0, 0, width, height);
 };
 
 const drawGrid = (ctx) => {
@@ -138,6 +158,8 @@ const collectRoomTiles = (group, room) => {
 
 const drawRooms = (ctx) => {
   computeGroupMap(); // Compute group map before drawing
+
+  drawBackground(ctx); // Draw background first
 
   drawGrid(ctx); // Draw grid first
 
@@ -964,6 +986,5 @@ watch(
 .dungeon-map {
   margin: auto;
   display: flex;
-  background-color: #f3f3e8;
 }
 </style>

@@ -33,6 +33,16 @@
           </button>
         </li>
       </ul>
+      <div class="copy-buttons">
+        <cdr-button @click="copyDungeonasPlainText" modifier="secondary">Copy As Plain Text</cdr-button>
+        <cdr-button @click="copyDungeonasHTML" modifier="secondary">Copy As HTML</cdr-button>
+        <cdr-button @click="copyDungeonasMarkdown" modifier="secondary">Copy As Homebrewery Markdown</cdr-button>
+        <p>Use the above buttons to copy all setting info into your desired format. For homebrewery go <cdr-link
+            href="https://homebrewery.naturalcrit.com/new">here</cdr-link> and paste the markdown
+          there. You will need to add your own pagebreaks.</p>
+
+        <cdr-button @click="deleteAllDungeons">Delete All Dungeons</cdr-button>
+      </div>
     </div>
 
     <!-- Main Content -->
@@ -129,13 +139,16 @@
                 <h4>{{ dungeonStore.currentDungeon.dungeonOverview.title }}</h4>
                 <div v-if="dungeonStore.currentDungeon.rooms">
                   <DungeonMap :rooms="dungeonStore.currentDungeon.rooms" @roomClicked="handleRoomClick" ref="dungeonMap"
-                    @mapClicked="handleMapClick" />
+                    :dungeonName="dungeonStore.currentDungeon.dungeonOverview.name" @mapClicked="handleMapClick" />
                 </div>
                 <div class="generate-button-container">
                   <cdr-button @click="handleGenerateMapClick" modifier="dark" size="small">
                     {{ dungeonStore.currentDungeon && dungeonStore.currentDungeon.rooms ? 'Re-generate Map' :
                       'Generate Map'
                     }}
+                  </cdr-button>
+                  <cdr-button v-if="mapExists" @click="handleDownloadMapClick" modifier="dark" size="small">
+                    Download Map
                   </cdr-button>
                 </div>
               </div>
@@ -144,9 +157,6 @@
               :style="mapContainerInlineStyles">
               <RoomDescription v-if="!dungeonStore.isMapSidebarCollapsed" />
             </MapSidebar>
-          </div>
-          <div v-if="dungeonStore.currentDungeon && !dungeonStore.currentDungeon.rooms">
-            <p>Generate a Map for your dungeon</p>
           </div>
         </TabPanel>
 
@@ -205,21 +215,31 @@
             </cdr-accordion>
           </cdr-accordion-group>
 
-          <!-- Disabled for now. Will be available later 
           <h3>Add a New NPC</h3>
-          <cdr-input v-model="dungeonStore.npcName" label="NPC Name">
-            <template #helper-text-bottom>
-              Enter the name of the NPC.
-            </template>
-          </cdr-input>
-          <cdr-input v-model="dungeonStore.npcShortDescription" label="NPC Short Description">
-            <template #helper-text-bottom>
-              Examples: "A trapped explorer seeking help", "A ghost haunting the corridors", "A lost child"
-            </template>
-          </cdr-input>
-          <cdr-button @click="dungeonStore.addNPC()" :disabled="dungeonStore.currentlyLoadingNPC">
-            Add NPC
-          </cdr-button> -->
+          <cdr-form-group :error="modelError">
+            <cdr-input v-model="dungeonStore.npcName" label="NPC Name" :required="true">
+              <template #helper-text-bottom>
+                Enter the name of the NPC.
+              </template>
+            </cdr-input>
+            <cdr-input v-model="dungeonStore.npcShortDescription" label="NPC Short Description" :required="true">
+              <template #helper-text-bottom>
+                Examples: "A trapped explorer seeking help", "A ghost haunting the corridors", "A lost child"
+              </template>
+            </cdr-input>
+            <cdr-button @click="createNPC" :disabled="dungeonStore.currentlyLoadingNPC">
+              Add NPC
+            </cdr-button>
+          </cdr-form-group>
+        </TabPanel>
+        <TabPanel label="Statblocks">
+          <div style="text-align: center; margin-top: 2rem;">
+            <p>Statblocks will be integrated in a future version of this app.</p>
+            <p>For now please visit: <a href="https://cros.land/ai-powered-dnd-5e-monster-statblock-generator/"
+                target="_blank">https://cros.land/ai-powered-dnd-5e-monster-statblock-generator/</a> to create
+              statblocks
+              for this dungeon.</p>
+          </div>
         </TabPanel>
       </Tabs>
     </div>
@@ -249,6 +269,9 @@ import {
 } from '@rei/cedar';
 
 import { useDungeonStore } from '../stores/dungeon-store.mjs';
+import { dungeonToMarkdown } from '../util/dungeon-to-markdown.mjs';
+import { dungeonToHTML } from '../util/dungeon-to-html.mjs';
+import { dungeonToPlainText } from '../util/dungeon-to-plain-text.mjs';
 
 const dungeonStore = useDungeonStore();
 
@@ -267,6 +290,51 @@ const mapContainerInlineStyles = computed(() => (
   // Set the height of the map container to match the sidebar height for non-mobile
   isMobileWidth.value ? {} : { height: mapContainerHeight.value }
 ));
+
+function copyDungeonasMarkdown() {
+  const markdown = dungeonToMarkdown(dungeonStore.currentDungeon);
+  navigator.clipboard.writeText(markdown);
+}
+
+function copyDungeonasHTML() {
+  const html = dungeonToHTML(dungeonStore.currentDungeon);
+  navigator.clipboard.writeText(html);
+}
+
+function copyDungeonasPlainText() {
+  const plainText = dungeonToPlainText(dungeonStore.currentDungeon);
+  navigator.clipboard.writeText(plainText);
+}
+
+function handleDownloadMapClick() {
+  if (dungeonMap.value && dungeonMap.value.downloadCanvasAsImage) {
+    dungeonMap.value.downloadCanvasAsImage();
+  } else {
+    console.error('DungeonMap component or downloadCanvasAsImage method not found');
+  }
+}
+
+function deleteAllDungeons() {
+  const confirmed = window.confirm('Are you sure you want to delete all settings?');
+  if (confirmed) {
+    dungeonStore.deleteAllDungeons();
+  }
+}
+
+const mapExists = computed(() => {
+  return dungeonStore.currentDungeon && dungeonStore.currentDungeon.rooms;
+});
+
+const modelError = ref(null);
+function createNPC() {
+  if (!dungeonStore.npcName || !dungeonStore.npcShortDescription) {
+    modelError.value = 'Please fill out all fields.';
+    return false;
+  }
+  dungeonStore.addNPC();
+  modelError.value = null;
+  return true;
+}
 
 function handleMapWrapperClick(event) {
   if (dungeonStore.isMapSidebarCollapsed) {
@@ -299,42 +367,6 @@ const difficultyOptions = [
   'Tier 4: Master - A hero of the world.',
   'Tier 5: Immortal - A hero of the realms.',
 ]
-
-const selectedRoom = computed(() => {
-  if (
-    dungeonStore.currentDungeon &&
-    dungeonStore.currentDungeon.rooms &&
-    dungeonStore.selectedRoomId !== null
-  ) {
-    return dungeonStore.currentDungeon.rooms.find(
-      (room) => room.id === dungeonStore.selectedRoomId
-    );
-  }
-  return null;
-});
-
-function selectConnectedRoom(roomId) {
-  dungeonStore.selectedRoomId = roomId;
-
-  if (dungeonStore.isMapSidebarCollapsed) {
-    dungeonStore.isMapSidebarCollapsed = false;
-  }
-}
-
-function getRoomName(roomId) {
-  const room = dungeonStore.currentDungeon.rooms.find((room) => room.id === roomId);
-  return room ? `${room.name || 'Unnamed'}` : `Unnamed`;
-}
-
-
-function formatDoorwayType(type) {
-  // Replace hyphens with spaces and capitalize each word
-  return type
-    .split('-')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-}
-
 
 
 function updateMapContainerHeight() {
@@ -490,6 +522,14 @@ function adjustMapScrollToPosition(roomX, roomY) {
   min-height: 75vh;
 }
 
+.copy-buttons {
+  display: flex;
+  flex-direction: column;
+  margin: 1rem;
+  gap: 1rem;
+  margin-bottom: 7rem;
+}
+
 .dungeon-map-wrapper {
   background-color: #fafaf6;
   overflow-x: auto;
@@ -581,6 +621,9 @@ function adjustMapScrollToPosition(roomX, roomY) {
   height: 100vh;
   overflow-y: auto;
   position: fixed;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   top: 0;
   left: 0;
   z-index: 3;
@@ -761,7 +804,6 @@ function adjustMapScrollToPosition(roomX, roomY) {
     position: absolute;
     bottom: 0;
     left: 0;
-    width: 100%;
     height: 0;
     transition: height 0.3s ease;
     overflow: hidden;

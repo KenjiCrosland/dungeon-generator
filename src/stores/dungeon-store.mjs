@@ -5,6 +5,8 @@ import { ref, computed } from 'vue';
 import { generateDungeon } from '../util/generate-dungeon.mjs';
 import { createRoomDescriptions } from '../util/create-room-descriptions.mjs';
 import { addDungeonDetails } from '../util/dungeon-details.mjs';
+import adjectives from '../data/adjectives.json';
+import potentialNames from '../data/dungeon-names.json';
 import {
   dungeonOverviewPrompt,
   validateDungeonOverview,
@@ -83,6 +85,12 @@ export const useDungeonStore = defineStore('dungeon', () => {
     }
   }
 
+  function deleteAllDungeons() {
+    dungeons.value = [];
+    currentDungeonId.value = null;
+    saveDungeons();
+  }
+
   // Reactive form data
   const form = ref({
     adjective: '',
@@ -96,10 +104,69 @@ export const useDungeonStore = defineStore('dungeon', () => {
     try {
       loadingOverview.value = true;
       activeTabIndex.value = 0;
+      const potentialSettingTypes = [
+        'temple',
+        'outpost',
+        'catacombs',
+        'hideout',
+        'caves',
+        'crypt',
+        'lair',
+        'stronghold',
+        'mines',
+        'tower',
+        'lab',
+        'ruins',
+        'underwater temple',
+        'fort',
+        'sewer',
+        'grove',
+        'castle',
+        'undercity',
+        'tomb',
+        'sanctuary',
+        'prison',
+        'monastery',
+        'shrine',
+        'ziggurat',
+      ];
+      let adjective = '';
+      let settingType = '';
+      let placeName = '';
+
+      settingType =
+        form.value.setting_type.toLowerCase() ||
+        potentialSettingTypes[
+          Math.floor(Math.random() * potentialSettingTypes.length)
+        ];
+      if (adjectives[settingType] || form.value.adjective) {
+        adjective =
+          form.value.adjective ||
+          adjectives[settingType][
+            Math.floor(Math.random() * adjectives[settingType].length)
+          ];
+      } else {
+        adjective =
+          adjectives['generic'][
+            Math.floor(Math.random() * adjectives['generic'].length)
+          ];
+      }
+      if (potentialNames[settingType] || form.value.place_name) {
+        placeName =
+          form.value.place_name.toLowerCase() ||
+          potentialNames[settingType][
+            Math.floor(Math.random() * potentialNames[settingType].length)
+          ];
+      } else {
+        placeName =
+          potentialNames['generic'][
+            Math.floor(Math.random() * potentialNames['generic'].length)
+          ];
+      }
       const prompt = dungeonOverviewPrompt(
-        form.value.adjective,
-        form.value.setting_type,
-        form.value.place_name,
+        adjective,
+        settingType,
+        placeName,
         form.value.place_lore,
         form.value.difficulty,
       );
@@ -291,6 +358,8 @@ export const useDungeonStore = defineStore('dungeon', () => {
     npcName.value = '';
     npcShortDescription.value = '';
 
+    generateDungeonNPC(currentDungeon.value.npcs.length - 1);
+
     saveDungeons();
   }
 
@@ -342,6 +411,7 @@ export const useDungeonStore = defineStore('dungeon', () => {
     selectDungeon,
     createNewDungeon,
     deleteDungeon,
+    deleteAllDungeons,
     generateDungeonOverview,
     generateDungeonNPC,
     deleteNPC,

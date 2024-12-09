@@ -1,12 +1,12 @@
-// secret-door-prompt.mjs
-
 export function generateSecretDoorPrompt(
   dungeonOverview,
-  roomDescription,
+  currentRoomDescription,
   connectedRoomsInfo = '',
   secretRoomSummary = '',
+  currentRoomContent = '',
+  secretRoomContent = '',
 ) {
-  // Include the secretRoomSummary if provided
+  // Include the secretRoomSummary and room content arrays if provided
   const secretRoomSection = secretRoomSummary
     ? `**Secret Room Summary:**
 ${secretRoomSummary}
@@ -14,14 +14,28 @@ ${secretRoomSummary}
 `
     : '';
 
+  const currentRoomContentSection = currentRoomContent
+    ? `**Current Room Content:**
+${currentRoomContent}
+
+`
+    : '';
+
+  const secretRoomContentSection = secretRoomContent
+    ? `**Secret Room Content:**
+${secretRoomContent}
+
+`
+    : '';
+
   return `
-Using the dungeon overview, room description, and connected rooms information below, create detailed content for a secret door or passage within the room. The secret door should match the theme of the dungeon and may be influenced by the secret room it leads to. All descriptions are intended for the **Game Master (GM)** only.
+Using the dungeon overview, current room description, connected rooms information, current room content, and secret room details below, create detailed content for a secret door or passage within the current room. The secret door should match the theme of the dungeon and be influenced by the secret room it leads to. All descriptions are intended for the **Game Master (GM)** only.
 
 **Dungeon Overview:**
 ${dungeonOverview}
 
-**Room Description:**
-${roomDescription}
+**Current Room Description:**
+${currentRoomDescription}
 
 ${
   connectedRoomsInfo !== ''
@@ -30,25 +44,27 @@ ${
     : ''
 }
 
-${secretRoomSection}**Guidelines:**
+${currentRoomContentSection}${secretRoomSection}${secretRoomContentSection}**Guidelines:**
 
 - **Secret Door Header:**
   - Provide a brief, descriptive title for the secret door (e.g., "Hidden Alchemical Shelf", "Magic Mirror", "Hole Behind Tapestry").
+  - The door's description should tie into the theme or function of the room it connects to (e.g., if the secret room is a library, the door could involve books or knowledge-based mechanics).
 
 - **Finding Mechanics:**
   - Describe how players can discover the secret door, including any clues or signs.
   - Include mechanics required to find the door, such as high DC skill checks (e.g., Perception, Investigation, Arcana).
   - Ensure that finding the door is challenging, requiring **hard checks**.
+  - Make sure that these clues connect with the secret room's theme. For example, if the secret room is dedicated to alchemical experiments, hints may involve alchemical residues or equipment.
 
 - **Opening Mechanics:**
   - Explain what is required to open the secret door once it's found.
   - This could be a simple action or involve solving a puzzle, performing a ritual, or using a specific item.
-  - The opening mechanism should be logical and thematic.
+  - The opening mechanism should be logical and thematic, ideally tied to the lore or features of the connected secret room (e.g., an alchemical formula needs to be completed to access an alchemist's hidden chamber).
 
 - **Lore:**
   - Provide background information on why the secret door exists.
   - Explain what room it hides and why it is concealed.
-  - Incorporate elements from the **secret room summary** if provided.
+  - Incorporate elements from the **secret room summary** and **secret room content** if provided, and ensure consistency between the door and the secret room's lore.
 
 **Important Notes:**
 
@@ -72,8 +88,6 @@ ${secretRoomSection}**Guidelines:**
 \`\`\`
 `;
 }
-
-// secret-door-prompt.mjs
 
 export function validateSecretDoorResponse(jsonString) {
   try {

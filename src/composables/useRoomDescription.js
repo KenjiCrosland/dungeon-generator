@@ -376,36 +376,62 @@ export function useRoomDescription() {
     connectedRoomsInfo,
     contentArray,
   }) {
-    const roomDescriptionString = contentArrayToString(
+    // Generate string from current room's contentArray, excluding read_aloud descriptions
+    const currentRoomDescriptionString = contentArrayToString(
       contentArray.filter((item) => item.format !== 'read_aloud'),
     );
 
+    // Get the content of the current room
+    const currentRoomContentString = contentArrayToString(contentArray);
+
+    // Find the secret doorway in the current room
     const secretDoorway = room.doorways.find(
       (doorway) => doorway.type.toLowerCase() === 'secret',
     );
 
     let secretRoomSummary = '';
+    let secretRoomContentString = '';
 
     if (secretDoorway && secretDoorway.connectedRoomId) {
+      // Find the connected secret room using its ID
       const secretRoom = currentDungeon.rooms.find(
         (r) => r.id === secretDoorway.connectedRoomId,
       );
-      if (secretRoom && secretRoom.oneSentenceSummary) {
-        secretRoomSummary = secretRoom.oneSentenceSummary;
+
+      // If the secret room exists, get its one-sentence summary and contentArray
+      if (secretRoom) {
+        if (secretRoom.oneSentenceSummary) {
+          secretRoomSummary = secretRoom.oneSentenceSummary;
+        }
+
+        if (secretRoom.contentArray && secretRoom.contentArray.length > 0) {
+          secretRoomContentString = contentArrayToString(
+            secretRoom.contentArray.filter(
+              (item) => item.format !== 'read_aloud',
+            ),
+          );
+        }
       }
     }
 
     const prompt = generateSecretDoorPrompt(
       dungeonOverview,
-      roomDescriptionString,
+      currentRoomDescriptionString,
       connectedRoomsInfo,
       secretRoomSummary,
+      currentRoomContentString,
+      secretRoomContentString,
     );
+
     console.log('Secret Door Prompt:', prompt);
+
+    // Get the response for the secret door generation
     const secretDoorResponse = await generateGptResponse(
       prompt,
       validateSecretDoorResponse,
     );
+
+    // Validate and process the response if valid
     if (validateSecretDoorResponse(secretDoorResponse)) {
       const secretDoorData = JSON.parse(secretDoorResponse);
       const secretDoorContent = processSecretDoorResponse(secretDoorData);

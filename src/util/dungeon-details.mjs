@@ -133,6 +133,19 @@ export function addDungeonDetails(dungeonData) {
   }
 
   /**
+   * Checks if a room is accessible through a secret doorway marked as 'fromParent: true'.
+   *
+   * @param {Object} room - The room to check.
+   * @returns {boolean} - True if the room is accessible only through secret doors with 'fromParent: true'.
+   */
+  function isRoomAccessibleThroughSecretFromParent(room) {
+    // Check if there is at least one doorway with type 'secret' and 'fromParent: true'.
+    return room.doorways.some(
+      (doorway) => doorway.type === 'secret' && doorway.fromParent,
+    );
+  }
+
+  /**
    * Assigns room types to each room in the dungeon based on the dungeon's structure.
    *
    * @param {Array} roomsArray - The rooms array.
@@ -152,10 +165,9 @@ export function addDungeonDetails(dungeonData) {
     // Assign entrance room
     rooms[entranceRoomId].roomType = 'entrance';
 
-    // Assign 'secret' rooms (rooms with only one secret doorway)
+    // Assign 'secret' rooms based on doorway connections
     roomsArray.forEach((room) => {
-      const numConnections = room.doorways.length;
-      if (numConnections === 1 && room.doorways[0].type === 'secret') {
+      if (isRoomAccessibleThroughSecretFromParent(room)) {
         room.roomType = 'secret';
       }
     });

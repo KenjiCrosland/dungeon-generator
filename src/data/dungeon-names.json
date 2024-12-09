@@ -1,0 +1,253 @@
+{
+  "temple": [
+    "Forgotten Echoes",
+    "Blasphemous Rite",
+    "Venerable Sanctum",
+    "Eldar's Reach",
+    "Xin",
+    "Athura",
+    "Lotus Enclave",
+    "Desecrated Pillars"
+  ],
+  "outpost": [
+    "Windswept Keep",
+    "Cragwatch Post",
+    "Vigil's End",
+    "Forsaken Bastion Arath",
+    "Vesper",
+    "Bael's Watch",
+    "Stormpeak Eryn"
+  ],
+  "catacombs": [
+    "Eldoria's Depths",
+    "Karak's Rest",
+    "Uldan's Boneway",
+    "Ancestor's Veil",
+    "Morva's Twilight",
+    "Sorrow's End",
+    "Varin's Passage",
+    "Empress's Tomb"
+  ],
+  "hideout": [
+    "Rusthand's Refuge",
+    "Crimson Coin Vault of Galvin",
+    "King's Shadow Lair",
+    "Rorek's Haven",
+    "Hallowed Knives Hideout",
+    "Grimblade Sanctuary",
+    "Elaris's Knife Den",
+    "Mad Monogan's Refuge"
+  ],
+  "caves": [
+    "Nyris Hollow",
+    "Eldrak's Deepwell",
+    "Mossy Maw",
+    "Deepforge Cavern",
+    "Tharon's Abyss",
+    "Abin's Grotto",
+    "Varn's Hollow",
+    "Theros's Catacomb"
+  ],
+  "crypt": [
+    "Ebon Rest",
+    "Pale Dynasty Crypt",
+    "Foruk Estate Burial Grounds",
+    "Souk's Pavilion",
+    "Crimson Kings' Rest",
+    "Blackened Halls of Othar"
+  ],
+  "lair": [
+    "Vexis's Fang Lair",
+    "Darkmaw's Refuge",
+    "Asmerathmasil's Nest",
+    "Malgor's Hollow",
+    "Veiled Vashara",
+    "Kazan's Retreat",
+    "Lethis's Hideout"
+  ],
+  "stronghold": [
+    "Aegis Lost",
+    "Daelin's Emberhold",
+    "Shadowstone Bastion",
+    "Redoubt of Eldoria",
+    "Ironheart Karn",
+    "Fractured Bulwark",
+    "Citadel of the Fallen",
+    "Vault Veil"
+  ],
+  "mines": [
+    "Vein of the Forsaken",
+    "Grimdelve",
+    "Dwarrowdark",
+    "Thalrak's Chasm",
+    "Irondeep Mines",
+    "Groth's Descent",
+    "Brynn's Excavation",
+    "Karnok's Quarry"
+  ],
+  "tower": [
+    "Stormwatch Veyra",
+    "Nalis's Tower",
+    "Eldwyn's Apex",
+    "Obsidian Needle",
+    "Cloudpiercer's Ruin",
+    "Beacon of the Veil",
+    "Zharis's Keep",
+    "Spiral of Zhayra"
+  ],
+  "lab": [
+    "Albin's Workshop",
+    "Alchemical Sanctum of Nivara",
+    "Hall of Forbidden Experiments",
+    "Vexilar's Laboratory",
+    "Vault Cursed Scholar",
+    "Crimson Retort of Thalorin"
+  ],
+  "ruins": [
+    "Eldar's Fall",
+    "Tareth's Bastion",
+    "Mirak's Desolation",
+    "Selene's Wyrm Grave",
+    "Shrine Wildborn",
+    "Cradle of Ruin",
+    "Nerathis's Sunken Remnants",
+    "Elara's Sanctum"
+  ],
+  "underwater temple": [
+    "Abyssal Reliquary of Tidelor",
+    "Temple of the Drowned Gods",
+    "Nerathis's Sunken Court",
+    "Marris's Altar",
+    "Lorian's Submerged Chapel",
+    "Vyris's Coral Crown",
+    "Talren's Sacrarium",
+    "Eldross's Grave"
+  ],
+  "fort": [
+    "Garen's Stormbluff",
+    "Vanguard Forgotten",
+    "Redoubt Desolation",
+    "Durin's Craghold",
+    "Virek's Last Stand",
+    "Kalrin's Borderwatch",
+    "Voss's War-Worn Hold",
+    "Battlekeep of the Lost"
+  ],
+  "sewer": [
+    "Skarn's Labyrinth",
+    "Sewage Conflux",
+    "the Lost",
+    "Channel Damned",
+    "Vashar's Underbelly",
+    "Mareth's Catacomb",
+    "Krynn's Drainway",
+    "Felmar's Gutterworks"
+  ],
+  "grove": [
+    "Faelyn's Thicket",
+    "Ithil's Glade",
+    "Grove Secrets",
+    "Bloom",
+    "Valenwood's Grove",
+    "Briarheart",
+    "Thalria's Whisperwood",
+    "Nyssa's Hollow"
+  ],
+  "castle": [
+    "Eryndor's Keep",
+    "Valis's Shadowspire",
+    "Myra's Bastion",
+    "Althar's Elder Hall",
+    "Yvaine's Darkmoon Fortress",
+    "Lorith's Obsidian Hold",
+    "Eredel's Retreat",
+    "Cursed Citadel of Aleria"
+  ],
+  "undercity": [
+    "Vexlar's Market",
+    "Depths of the Forgotten",
+    "Undercroft of the Damned",
+    "Merrak's Sin Hall",
+    "Labyrinth Unmapped",
+    "Orak's Subterrane",
+    "Echoes of the Dark",
+    "Nalis's Borough"
+  ],
+  "tomb": [
+    "Arvel's Mausoleum",
+    "Myrren's Sepulcher",
+    "Eldarion's Rest",
+    "Karath's Veil",
+    "Nyros's Hollow",
+    "Velris's Catacomb",
+    "Drakthar's Rest",
+    "Lyran's Grave"
+  ],
+  "sanctuary": [
+    "Refuge Sacred",
+    "Valara's Haven",
+    "Elden's Peace",
+    "Myrris's Shrine",
+    "Holy Grounds of Vesper",
+    "Athara's Sanctum",
+    "Zenar's Enclave",
+    "Lethis's Hearth"
+  ],
+  "prison": [
+    "Velkar's Hold",
+    "Rhen's Forgotten Gaol",
+    "Thrask's Damned Chamber",
+    "Kalros's Darkstone Dungeon",
+    "Taland's Keep",
+    "Arlen's Cells",
+    "Ghoran's Vault",
+    "Malvor's Bastille"
+  ],
+  "monastery": [
+    "Tariel's Cloister",
+    "Nivara's Meditation Hall",
+    "Erath's Hermitage",
+    "Velkor's Sanctuary",
+    "Miriel's Retreat",
+    "Monastic Grounds of Athura",
+    "Faelion's Abode",
+    "Nyara's Spirit Sanctuary"
+  ],
+  "shrine": [
+    "Elunara's Moonlit Shrine",
+    "Vyrna's Grove",
+    "Draegor's Altar",
+    "Valdara's Retreat",
+    "Lorien's Pilgrim Mark",
+    "Aelwyn's Stone",
+    "Thalos's Meadow",
+    "Nyx's Stone"
+  ],
+  "ziggurat": [
+    "Karnak's Ziggurat",
+    "Akasha's Pyramid",
+    "Varanis's Monument",
+    "Thalrex's Temple",
+    "Eryndor's Obsidian Peak",
+    "Xalar's Stairway",
+    "Voryn's Rise"
+  ],
+  "generic": [
+    "Valinor",
+    "Kyris",
+    "Zarath",
+    "Melora",
+    "Draken",
+    "Krynn",
+    "Aleris",
+    "Eldara",
+    "Nyx",
+    "Vyr",
+    "Arden",
+    "Lorian",
+    "Xenith",
+    "Tharos",
+    "Mirela",
+    "Kalindra"
+  ]
+}
