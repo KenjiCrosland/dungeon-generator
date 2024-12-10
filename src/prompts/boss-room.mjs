@@ -1,6 +1,58 @@
-// boss-room.js
+export function generateBossRoomPrompt(
+  dungeonOverview,
+  shortDescription,
+  connectedRoomsInfo = '',
+  formRoomName = '',
+  formRoomSummary = '',
+  npcString = '',
+) {
+  const roomNameSection = formRoomName
+    ? `**Room Name:**
+${formRoomName}
 
-export function generateBossRoomPrompt(dungeonOverview, shortDescription) {
+`
+    : '';
+
+  const roomSummarySection = formRoomSummary
+    ? `**Room Summary:**
+${formRoomSummary}
+
+`
+    : '';
+
+  const npcSection = npcString
+    ? `**NPC Present in the Room:**
+${npcString}
+
+The NPC is currently in the room in addition to the boss. Include them in the room description, detailing what they are doing and how they might interact with players and with the boss. Consider their personality, goals, and any relationships they have.
+
+`
+    : '';
+
+  const connectedRoomsSection =
+    connectedRoomsInfo !== ''
+      ? `**Connected Rooms:** 
+This room is connected to the following rooms: ${connectedRoomsInfo}\n`
+      : '';
+
+  const npcInteractionGuidelines = npcString
+    ? `- **NPC Interaction (If NPC is Present):**
+  - Describe how the NPC might interact with the players and the boss.
+  - Consider the NPC's personality, goals, and any relationships they have with the boss or players.
+  - The NPC could provide assistance, hinder the players, or have their own agenda.
+`
+    : '';
+
+  // Include npc_interaction key description if npcString is provided
+  const npcInteractionKey = npcString
+    ? `- **npc_interaction**: Describe how the NPC interacts with the players and the boss, their agenda, and their potential influence on the encounter.`
+    : '';
+
+  // Include npc_interaction example JSON line if npcString is provided
+  const npcInteractionExample = npcString
+    ? `,\n  "npc_interaction": "The NPC, Selwyn, stands off to the side, torn between helping the boss or aiding the players, hoping to negotiate a deal that benefits them most."`
+    : '';
+
   return `
 Using the dungeon overview and room description below, create a detailed description of the **boss room**. The boss encounter should be engaging, dynamic, and fit within the context of the dungeon.
 
@@ -10,7 +62,7 @@ ${dungeonOverview}
 **Short Room Description:**
 ${shortDescription}
 
-**Guidelines:**
+${connectedRoomsSection}${roomNameSection}${roomSummarySection}${npcSection}**Guidelines:**
 
 - **Boss Character:**
   - Create a unique and memorable boss character with a clear motivation and goal.
@@ -37,8 +89,8 @@ ${shortDescription}
 - **Roleplaying Opportunities:**
   - Allow for potential dialogue, negotiation, or moral choices.
   - The boss might reveal information or taunt the players.
-
-- **Loot and Rewards:**
+  
+${npcInteractionGuidelines}- **Loot and Rewards:**
   - Specify any unique items, knowledge, or rewards the players gain upon victory.
 
 - **Foreshadowing Elements:**
@@ -46,7 +98,7 @@ ${shortDescription}
 
 **Return the description in JSON format with the following keys:**
 
-- **name**: A short, evocative name for the boss room.
+- **name**: ${formRoomName ? formRoomName : 'A descriptive name for the room.'}
 - **one_sentence_summary**: A concise summary of the room's purpose and atmosphere.
 - **read_aloud_description**: A vivid description to read aloud when players enter the room, setting the scene and atmosphere.
 - **boss_name**: The name of the boss.
@@ -59,25 +111,27 @@ ${shortDescription}
 - **roleplaying_opportunities**: For the Dungeon Master's eyes only. Describe any opportunities for dialogue or moral choices.
 - **loot_and_rewards**: For the Dungeon Master's eyes only. List any unique items, knowledge, or rewards gained upon defeating the boss.
 - **read_aloud_boss_appearance**: A description to read aloud when the boss is revealed or engages with the players.
+${npcInteractionKey ? npcInteractionKey + '\n' : ''}
 
 **Example JSON Format:**
 
+\`\`\`json
 {
   "name": "The Abyssal Sanctum",
   "one_sentence_summary": "A chamber of shadow and water where an ancient elemental seeks to flood the world.",
-  "read_aloud_description": "You step into a vast chamber carved from obsidian, illuminated by the eerie glow of floating crystals. At the center, a swirling vortex pulses with dark energy.",
+  "read_aloud_description": "You step into a vast chamber carved from obsidian, illuminated by the eerie glow of floating crystals...",
   "boss_name": "Hydrothrax, the Abyssal Tidebinder",
-  "boss_description": "Hydrothrax is a towering elemental composed of shadowy water, its form constantly shifting. Tendrils of dark energy emanate from its core, and its eyes glow with ancient power.",
-  "boss_motivation": "Hydrothrax seeks to open a permanent portal to the Elemental Plane of Water, flooding the world and reclaiming lost essences.",
-  "boss_weakness": "Hydrothrax is vulnerable to ancient runic seals found throughout the temple. A successful DC 18 Wisdom (Perception) or Intelligence (Arcana) check reveals glowing symbols on its body corresponding to the seals. Players can exploit this weakness by performing a ritual or using spells aligned with the seals, reducing its defenses and preventing it from regenerating health.",
-  "boss_mechanics": "The encounter has three phases, each introducing new abilities. Hydrothrax manipulates water and shadow, summons minions, and alters the environment. Special mechanics include rising water levels and area-of-effect attacks.",
-  "environmental_features": "The room's vortex empowers Hydrothrax, and crystals can be destroyed to weaken it. Water fills the room gradually, affecting movement.",
-  "failure_consequences": "If not stopped in time, the portal opens fully, unleashing a catastrophic flood and summoning powerful elementals.",
-  "roleplaying_opportunities": "Hydrothrax might be reasoned with if players offer to help restore balance differently. It reveals lore about the temple and its own creation.",
-  "loot_and_rewards": "Defeating Hydrothrax grants the 'Trident of Tides' and knowledge to control the temple's energies.",
-  "read_aloud_boss_appearance": "From the vortex emerges a colossal figure of swirling darkness and water. 'You are too late,' it echoes, 'the tide shall consume all.'"
+  "boss_description": "Hydrothrax is a towering elemental composed of shadowy water...",
+  "boss_motivation": "Hydrothrax seeks to open a permanent portal to the Elemental Plane of Water...",
+  "boss_weakness": "Hydrothrax is vulnerable to ancient runic seals...",
+  "boss_mechanics": "The encounter has three phases...",
+  "environmental_features": "The room's vortex empowers Hydrothrax...",
+  "failure_consequences": "If not stopped in time...",
+  "roleplaying_opportunities": "Hydrothrax might be reasoned with...",
+  "loot_and_rewards": "Defeating Hydrothrax grants...",
+  "read_aloud_boss_appearance": "From the vortex emerges a colossal figure..."${npcInteractionExample}
 }
-**Please provide the response in this JSON format.**
+\`\`\`
 `;
 }
 
@@ -124,6 +178,9 @@ export function processBossRoomResponse(data) {
   content.push({ format: 'paragraph', content: data.boss_weakness });
   content.push({ format: 'paragraph', content: data.boss_mechanics });
   content.push({ format: 'paragraph', content: data.environmental_features });
+  if (data.npc_interaction) {
+    content.push({ format: 'paragraph', content: data.npc_interaction });
+  }
   content.push({ format: 'paragraph', content: data.failure_consequences });
   content.push({
     format: 'paragraph',

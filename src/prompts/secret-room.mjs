@@ -1,12 +1,39 @@
-// secret-room-prompt.mjs
-
 export function generateSecretRoomPrompt(
   dungeonOverview,
   roomDescription,
   connectedRoomsInfo = '',
   secretDoorDetails = '',
+  formRoomName = '',
+  formRoomSummary = '',
+  npcString = '',
 ) {
-  // Include the secretDoorDetails if provided
+  // Include the Room Name section if provided
+  const roomNameSection = formRoomName
+    ? `**Room Name:**
+${formRoomName}
+
+`
+    : '';
+
+  // Include the Room Summary section if provided
+  const roomSummarySection = formRoomSummary
+    ? `**Room Summary:**
+${formRoomSummary}
+
+`
+    : '';
+
+  // Include the NPC Information section if provided
+  const npcSection = npcString
+    ? `**NPC Present in the Room:**
+${npcString}
+
+The NPC is currently in the room. Include them in the room description, detailing what they are doing and how they might interact with players. Consider their personality, goals, and any relationships they have.
+
+`
+    : '';
+
+  // Include the Secret Door Details section if provided
   const secretDoorSection = secretDoorDetails
     ? `**Secret Door Details:**
 ${secretDoorDetails}
@@ -26,11 +53,10 @@ ${roomDescription}
 ${
   connectedRoomsInfo !== ''
     ? `**Connected Rooms:** 
-  This room is connected to the following rooms: ${connectedRoomsInfo}`
+  This room is connected to the following rooms: ${connectedRoomsInfo}\n`
     : ''
 }
-
-${secretDoorSection}**Guidelines:**
+${roomNameSection}${roomSummarySection}${npcSection}${secretDoorSection}**Guidelines:**
 
 - **Room Name and Summary:**
   - Provide a short, appropriate name for the room (e.g., "Hidden Alchemy Lab", "Secret Archives").
@@ -55,7 +81,7 @@ ${secretDoorSection}**Guidelines:**
 
 **Return the secret room details in JSON format with the following flat keys:**
 
-- **name**: A short, appropriate name for the room.
+- **name**: ${formRoomName ? formRoomName : 'A descriptive name for the room.'}
 - **one_sentence_summary**: A brief summary of the room's function or purpose.
 - **read_aloud_description**: A vivid description to read aloud when players enter the room, setting the scene and atmosphere.
 - **lore_description**: Describe the room's history, purpose, and why it was hidden.
@@ -79,7 +105,6 @@ ${secretDoorSection}**Guidelines:**
 `;
 }
 
-// Validation Function
 export function validateSecretRoomResponse(jsonString) {
   try {
     const data = JSON.parse(jsonString);
@@ -105,7 +130,6 @@ export function validateSecretRoomResponse(jsonString) {
   }
 }
 
-// Processing Function
 export function processSecretRoomResponse(data) {
   const content = [];
 

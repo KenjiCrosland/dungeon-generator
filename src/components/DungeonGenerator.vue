@@ -47,7 +47,7 @@
 
     <!-- Main Content -->
     <div class="main-content">
-      <div v-if="!dungeonStore.currentDungeon && !dungeonStore.loadingOverview" class="content-container">
+      <div v-if="!dungeonStore.currentDungeon && !dungeonStore.loadingOverview" class="content-container content-form">
         <h1>Kenji's Dungeon Generator 2.0</h1>
         <p>
           Welcome to the Dungeon Generator! Use the form below to create a dungeon overview, generate a map, and add
@@ -800,6 +800,10 @@ function adjustMapScrollToPosition(roomX, roomY) {
       padding: 0;
       box-shadow: none;
       margin: auto;
+    }
+
+    .content-form {
+      padding: 1rem;
     }
   }
 
