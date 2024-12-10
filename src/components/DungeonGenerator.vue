@@ -47,202 +47,204 @@
 
     <!-- Main Content -->
     <div class="main-content">
-      <div v-if="!dungeonStore.currentDungeon && !dungeonStore.loadingOverview" class="dungeon-overview-form">
+      <div v-if="!dungeonStore.currentDungeon && !dungeonStore.loadingOverview" class="content-container">
+        <h1>Kenji's Dungeon Generator 2.0</h1>
+        <p>
+          Welcome to the Dungeon Generator! Use the form below to create a dungeon overview, generate a map, and add
+          NPCs to your dungeon. You can also copy the dungeon information in various formats for use in your campaign.
+        </p>
         <h3>Create Dungeon Overview</h3>
         <form @submit.prevent="dungeonStore.generateDungeonOverview">
-          <cdr-form-group>
-            <div class="generator-fields">
-              <cdr-input class="generator-field-input" id="adjective" v-model="dungeonStore.form.adjective"
-                background="secondary" label="Adjective">
-                <template #helper-text-bottom>
-                  Examples: "Forgotten", "Decaying", "Sunken"
-                </template>
-              </cdr-input>
-              <cdr-input class="generator-field-input" id="setting_type" v-model="dungeonStore.form.setting_type"
-                background="secondary" label="Type of Dungeon">
-                <template #helper-text-bottom>
-                  Examples: "Temple", "Fortress", "Outpost", "Catacombs"
-                </template>
-              </cdr-input>
-              <p style="text-align: center;">Of</p>
-              <cdr-input class="generator-field-input" id="place_name" v-model="dungeonStore.form.place_name"
-                background="secondary" label="Place Name">
-                <template #helper-text-bottom>
-                  Examples: "Forgotten Sun", "Grimhold", "Farwatch Outpost", "The Undercity"
-                </template>
-              </cdr-input>
-            </div>
-            <cdr-select class="generator-field-select" id="difficulty" v-model="dungeonStore.form.difficulty"
-              background="secondary" label="Dungeon Difficulty" :options="difficultyOptions"
-              :placeholder="'Select Difficulty'">
+
+          <div class="generator-fields">
+            <cdr-input class="generator-field-input" inputContainerClass="generator-field-input" id="adjective"
+              v-model="dungeonStore.form.adjective" background="secondary" label="Adjective">
               <template #helper-text-bottom>
-                Select the desired difficulty tier for the dungeon.
+                Examples: "Forgotten", "Decaying", "Sunken"
               </template>
-            </cdr-select>
-            <div class="lore-field-input">
-              <cdr-input :rows="5" tag="textarea" v-model="dungeonStore.form.place_lore" background="secondary"
-                label="Dungeon Lore" placeholder="Enter any additional details about the dungeon">
-                <template #helper-text-bottom>
-                  Write any details about your dungeon that you want to include. Need help coming up with lore for your
-                  setting? Use the
-                  <cdr-link href="https://cros.land/ai-powered-lore-and-timeline-generator/">Lore Generator</cdr-link>
-                  and paste in the generated summary!
-                </template>
-              </cdr-input>
-            </div>
-          </cdr-form-group>
-          <cdr-button type="submit" modifier="dark">Generate Overview</cdr-button>
+            </cdr-input>
+            <cdr-input class="generator-field-input" inputContainerClass="generator-field-input" id="setting_type"
+              v-model="dungeonStore.form.setting_type" background="secondary" label="Type of Dungeon">
+              <template #helper-text-bottom>
+                Examples: "Temple", "Fortress", "Outpost", "Catacombs"
+              </template>
+            </cdr-input>
+            <p style="text-align: center;">Of</p>
+            <cdr-input class="generator-field-input" inputContainerClass="generator-field-input" id="place_name"
+              v-model="dungeonStore.form.place_name" background="secondary" label="Place Name">
+              <template #helper-text-bottom>
+                Examples: "Forgotten Sun", "Grimhold", "Farwatch Outpost", "The Undercity"
+              </template>
+            </cdr-input>
+          </div>
+          <cdr-select class="generator-field-select" id="difficulty" v-model="dungeonStore.form.difficulty"
+            background="secondary" label="Dungeon Difficulty" :options="difficultyOptions"
+            :placeholder="'Select Difficulty'">
+            <template #helper-text-bottom>
+              Select the desired difficulty tier for the dungeon.
+            </template>
+          </cdr-select>
+          <div class="lore-field-input">
+            <cdr-input :rows="5" tag="textarea" v-model="dungeonStore.form.place_lore" background="secondary"
+              label="Dungeon Lore" placeholder="Enter any additional details about the dungeon">
+              <template #helper-text-bottom>
+                Write any details about your dungeon that you want to include. Need help coming up with lore for your
+                setting? Use the
+                <cdr-link href="https://cros.land/ai-powered-lore-and-timeline-generator/">Lore Generator</cdr-link>
+                and paste in the generated summary!
+              </template>
+            </cdr-input>
+          </div>
+          <cdr-button style="margin-top: 2rem" type="submit" modifier="dark" :full-width="true">Generate
+            Overview</cdr-button>
         </form>
       </div>
-
-      <Tabs v-if="dungeonStore.currentDungeon || dungeonStore.loadingOverview"
-        :activeIndex="dungeonStore.activeTabIndex" @tab-changed="onTabChanged" class="tabs">
-        <TabPanel label="Overview">
-          <OverviewSkeleton v-if="dungeonStore.loadingOverview" />
-          <div v-if="dungeonStore.currentDungeon && dungeonStore.currentDungeon.dungeonOverview"
-            class="dungeon-overview">
-            <h2>{{ dungeonStore.currentDungeon.dungeonOverview.title }}</h2>
-            <p>{{ dungeonStore.currentDungeon.dungeonOverview.overview }}</p>
-            <p class="description-text">
-              {{ dungeonStore.currentDungeon.dungeonOverview.relation_to_larger_setting }}
-              {{ dungeonStore.currentDungeon.dungeonOverview.finding_the_dungeon }}
-            </p>
-            <p class="description-text">{{ dungeonStore.currentDungeon.dungeonOverview.history }}</p>
-            <p class="description-text">
-              {{ dungeonStore.currentDungeon.dungeonOverview.dominant_power }}
-              {{ dungeonStore.currentDungeon.dungeonOverview.dominant_power_goals }}
-              {{ dungeonStore.currentDungeon.dungeonOverview.dominant_power_minions }}
-            </p>
-            <p class="description-text">
-              {{ dungeonStore.currentDungeon.dungeonOverview.dominant_power_event }}
-              {{ dungeonStore.currentDungeon.dungeonOverview.recent_event_consequences }}
-            </p>
-            <p class="description-text">
-              {{ dungeonStore.currentDungeon.dungeonOverview.secondary_power }}
-              {{ dungeonStore.currentDungeon.dungeonOverview.secondary_power_event }}
-            </p>
-            <p class="description-text">
-              {{ dungeonStore.currentDungeon.dungeonOverview.main_problem }}
-              {{ dungeonStore.currentDungeon.dungeonOverview.potential_solutions }}
-            </p>
-            <p class="description-text">{{ dungeonStore.currentDungeon.dungeonOverview.conclusion }}</p>
-          </div>
-        </TabPanel>
-
-        <TabPanel label="Map">
-          <!-- Container for the map and sidebar -->
-          <div class="map-and-sidebar-container" ref="mapContainer">
-            <!-- Dungeon Map Wrapper -->
-            <div class="dungeon-map-wrapper" ref="mapWrapper" @click="handleMapWrapperClick">
-              <!-- Dungeon Map Container -->
-              <div v-if="dungeonStore.currentDungeon" class="dungeon-map-container" ref="mapContainer">
-                <h4 style="text-align: center">Map of {{ dungeonStore.currentDungeon.dungeonOverview.name }}</h4>
-                <div v-if="dungeonStore.currentDungeon.rooms">
-                  <DungeonMap :rooms="dungeonStore.currentDungeon.rooms" @roomClicked="handleRoomClick" ref="dungeonMap"
-                    :dungeonName="dungeonStore.currentDungeon.dungeonOverview.name" @mapClicked="handleMapClick" />
-                </div>
-                <div class="generate-button-container">
-                  <cdr-button @click="handleGenerateMapClick" modifier="dark" size="small">
-                    {{ dungeonStore.currentDungeon && dungeonStore.currentDungeon.rooms ? 'Re-generate Map' :
-                      'Generate Map'
-                    }}
-                  </cdr-button>
-                  <cdr-button v-if="mapExists" @click="handleDownloadMapClick" modifier="dark" size="small">
-                    Download Map
-                  </cdr-button>
-                </div>
-              </div>
+      <div v-if="dungeonStore.currentDungeon || dungeonStore.loadingOverview" class="content-container">
+        <Tabs :activeIndex="dungeonStore.activeTabIndex" @tab-changed="onTabChanged" class="tabs">
+          <TabPanel label="Overview">
+            <OverviewSkeleton v-if="dungeonStore.loadingOverview" />
+            <div v-if="dungeonStore.currentDungeon && dungeonStore.currentDungeon.dungeonOverview"
+              class="dungeon-overview">
+              <h2>{{ dungeonStore.currentDungeon.dungeonOverview.title }}</h2>
+              <p>{{ dungeonStore.currentDungeon.dungeonOverview.overview }}</p>
+              <p class="description-text">
+                {{ dungeonStore.currentDungeon.dungeonOverview.relation_to_larger_setting }}
+                {{ dungeonStore.currentDungeon.dungeonOverview.finding_the_dungeon }}
+              </p>
+              <p class="description-text">{{ dungeonStore.currentDungeon.dungeonOverview.history }}</p>
+              <p class="description-text">
+                {{ dungeonStore.currentDungeon.dungeonOverview.dominant_power }}
+                {{ dungeonStore.currentDungeon.dungeonOverview.dominant_power_goals }}
+                {{ dungeonStore.currentDungeon.dungeonOverview.dominant_power_minions }}
+              </p>
+              <p class="description-text">
+                {{ dungeonStore.currentDungeon.dungeonOverview.dominant_power_event }}
+                {{ dungeonStore.currentDungeon.dungeonOverview.recent_event_consequences }}
+              </p>
+              <p class="description-text">
+                {{ dungeonStore.currentDungeon.dungeonOverview.secondary_power }}
+                {{ dungeonStore.currentDungeon.dungeonOverview.secondary_power_event }}
+              </p>
+              <p class="description-text">
+                {{ dungeonStore.currentDungeon.dungeonOverview.main_problem }}
+                {{ dungeonStore.currentDungeon.dungeonOverview.potential_solutions }}
+              </p>
+              <p class="description-text">{{ dungeonStore.currentDungeon.dungeonOverview.conclusion }}</p>
             </div>
-            <MapSidebar v-model:isCollapsed="dungeonStore.isMapSidebarCollapsed" ref="mapSidebarRef"
-              :style="mapContainerInlineStyles">
-              <RoomDescription v-if="!dungeonStore.isMapSidebarCollapsed" />
-            </MapSidebar>
-          </div>
-        </TabPanel>
+          </TabPanel>
 
-        <TabPanel label="NPCs">
-          <h2>Notable NPCs</h2>
-
-          <cdr-accordion-group v-if="dungeonStore.currentDungeon && dungeonStore.currentDungeon.npcs">
-            <cdr-accordion v-for="(npc, index) in dungeonStore.currentDungeon.npcs" :key="index" :id="'npc-' + index"
-              :opened="npc.opened" @accordion-toggle="npc.opened = !npc.opened" level="2">
-              <template #label>
-                {{ npc.name }}
-              </template>
-              <cdr-tooltip id="tooltip-example" position="left" class="delete-button">
-                <template #trigger>
-                  <cdr-button size="small" :icon-only="true" :with-background="true"
-                    @click="dungeonStore.deleteNPC(index)">
-                    <template #icon>
-                      <icon-x-sm />
-                    </template>
-                  </cdr-button>
-                </template>
-                <div>
-                  Delete NPC
-                </div>
-              </cdr-tooltip>
-              <div>
-                <div v-if="dungeonStore.currentlyLoadingNPCs[index]">
-                  <NPCSkeleton />
-                </div>
-                <div v-else>
-                  <h2>{{ npc.name }}</h2>
-                  <div v-if="npc.description_of_position">
-                    <div class="read-aloud-box">
-                      <p>{{ npc.read_aloud_description }}</p>
-                    </div>
-                    <p>{{ npc.description_of_position }}</p>
-                    <p>{{ npc.why_in_dungeon }}</p>
-                    <p>{{ npc.distinctive_features_or_mannerisms }}</p>
-                    <p>{{ npc.character_secret }}</p>
-                    <h3>Relationships</h3>
-                    <div v-for="(relationship, relatedNpcName) in npc.relationships" :key="relatedNpcName">
-                      <p><strong>{{ relatedNpcName }}:</strong> {{ relationship }}</p>
-                    </div>
-                    <h3>Roleplaying Tips</h3>
-                    <p>{{ npc.roleplaying_tips }}</p>
+          <TabPanel label="Map">
+            <!-- Container for the map and sidebar -->
+            <div class="map-and-sidebar-container" ref="mapContainer">
+              <!-- Dungeon Map Wrapper -->
+              <div class="dungeon-map-wrapper" ref="mapWrapper" @click="handleMapWrapperClick">
+                <!-- Dungeon Map Container -->
+                <div v-if="dungeonStore.currentDungeon" class="dungeon-map-container" ref="mapContainer">
+                  <h4 style="text-align: center">Map of {{ dungeonStore.currentDungeon.dungeonOverview.name }}</h4>
+                  <div v-if="dungeonStore.currentDungeon.rooms">
+                    <DungeonMap :rooms="dungeonStore.currentDungeon.rooms" @roomClicked="handleRoomClick"
+                      ref="dungeonMap" :dungeonName="dungeonStore.currentDungeon.dungeonOverview.name"
+                      @mapClicked="handleMapClick" />
                   </div>
-                  <div v-if="!npc.description_of_position">
-                    <p>{{ npc.short_description }}</p>
-                    <cdr-button @click="dungeonStore.generateDungeonNPC(index)"
-                      :disabled="dungeonStore.currentlyLoadingNPCs[index]">
-                      Generate Full Description
+                  <div class="generate-button-container">
+                    <cdr-button @click="handleGenerateMapClick" modifier="dark" size="small">
+                      {{ dungeonStore.currentDungeon && dungeonStore.currentDungeon.rooms ? 'Re-generate Map' :
+                        'Generate Map'
+                      }}
+                    </cdr-button>
+                    <cdr-button v-if="mapExists" @click="handleDownloadMapClick" modifier="dark" size="small">
+                      Download Map
                     </cdr-button>
                   </div>
                 </div>
               </div>
-            </cdr-accordion>
+              <MapSidebar v-model:isCollapsed="dungeonStore.isMapSidebarCollapsed" ref="mapSidebarRef"
+                :style="mapContainerInlineStyles">
+                <RoomDescription v-if="!dungeonStore.isMapSidebarCollapsed" />
+              </MapSidebar>
+            </div>
+          </TabPanel>
 
-          </cdr-accordion-group>
+          <TabPanel label="NPCs">
+            <h2>Notable NPCs</h2>
 
-          <h3>Add a New NPC</h3>
-          <cdr-form-group :error="modelError">
-            <cdr-input v-model="dungeonStore.npcName" label="NPC Name" :required="true">
-              <template #helper-text-bottom>
-                Enter the name of the NPC.
-              </template>
-            </cdr-input>
-            <cdr-input v-model="dungeonStore.npcShortDescription" label="NPC Short Description" :required="true">
-              <template #helper-text-bottom>
-                Examples: "A trapped explorer seeking help", "A ghost haunting the corridors", "A lost child"
-              </template>
-            </cdr-input>
-            <cdr-button @click="createNPC" :disabled="dungeonStore.currentlyLoadingNPC">
-              Add NPC
-            </cdr-button>
-          </cdr-form-group>
-        </TabPanel>
-        <TabPanel label="Statblocks">
-          <div style="text-align: center; margin-top: 2rem;">
-            <p>Statblocks will be integrated in a future version of this app.</p>
-            <p>For now please visit: <a href="https://cros.land/ai-powered-dnd-5e-monster-statblock-generator/"
-                target="_blank">https://cros.land/ai-powered-dnd-5e-monster-statblock-generator/</a> to create
-              statblocks
-              for this dungeon.</p>
-          </div>
-        </TabPanel>
-      </Tabs>
+            <cdr-accordion-group v-if="dungeonStore.currentDungeon && dungeonStore.currentDungeon.npcs">
+              <cdr-accordion v-for="(npc, index) in dungeonStore.currentDungeon.npcs" :key="index" :id="'npc-' + index"
+                :opened="npc.opened" @accordion-toggle="npc.opened = !npc.opened" level="2">
+                <template #label>
+                  {{ npc.name }}
+                </template>
+                <cdr-tooltip id="tooltip-example" position="left" class="delete-button">
+                  <template #trigger>
+                    <cdr-button size="small" :icon-only="true" :with-background="true"
+                      @click="dungeonStore.deleteNPC(index)">
+                      <template #icon>
+                        <icon-x-sm />
+                      </template>
+                    </cdr-button>
+                  </template>
+                  <div>
+                    Delete NPC
+                  </div>
+                </cdr-tooltip>
+                <div>
+                  <div v-if="dungeonStore.currentlyLoadingNPCs[index]">
+                    <NPCSkeleton />
+                  </div>
+                  <div v-else>
+                    <h2>{{ npc.name }}</h2>
+                    <div v-if="npc.description_of_position">
+                      <div class="read-aloud-box">
+                        <p>{{ npc.read_aloud_description }}</p>
+                      </div>
+                      <p>{{ npc.description_of_position }}</p>
+                      <p>{{ npc.why_in_dungeon }}</p>
+                      <p>{{ npc.distinctive_features_or_mannerisms }}</p>
+                      <p>{{ npc.character_secret }}</p>
+                      <h3>Relationships</h3>
+                      <div v-for="(relationship, relatedNpcName) in npc.relationships" :key="relatedNpcName">
+                        <p><strong>{{ relatedNpcName }}:</strong> {{ relationship }}</p>
+                      </div>
+                      <h3>Roleplaying Tips</h3>
+                      <p>{{ npc.roleplaying_tips }}</p>
+                    </div>
+                    <div v-if="!npc.description_of_position">
+                      <p>{{ npc.short_description }}</p>
+                      <cdr-button @click="dungeonStore.generateDungeonNPC(index)"
+                        :disabled="dungeonStore.currentlyLoadingNPCs[index]">
+                        Generate Full Description
+                      </cdr-button>
+                    </div>
+                  </div>
+                </div>
+              </cdr-accordion>
+
+            </cdr-accordion-group>
+
+            <h3 style="margin-top: 3rem; margin-bottom: 1rem">Add a New NPC</h3>
+            <cdr-form-group :error="modelError">
+              <cdr-input v-model="dungeonStore.npcName" label="NPC Name" :required="true" />
+              <cdr-input v-model="dungeonStore.npcShortDescription" label="NPC Short Description" :required="true">
+                <template #helper-text-bottom>
+                  Examples: "A trapped explorer seeking help", "A ghost haunting the corridors", "A lost child"
+                </template>
+              </cdr-input>
+              <cdr-button style="margin-top: 2rem" @click="createNPC" :disabled="dungeonStore.currentlyLoadingNPC">
+                Add NPC
+              </cdr-button>
+            </cdr-form-group>
+          </TabPanel>
+          <TabPanel label="Statblocks">
+            <div style="text-align: center; margin-top: 2rem;">
+              <p>Statblocks will be integrated in a future version of this app.</p>
+              <p>For now please visit: <a href="https://cros.land/ai-powered-dnd-5e-monster-statblock-generator/"
+                  target="_blank">https://cros.land/ai-powered-dnd-5e-monster-statblock-generator/</a> to create
+                statblocks
+                for this dungeon.</p>
+            </div>
+          </TabPanel>
+        </Tabs>
+      </div>
     </div>
   </div>
 </template>
@@ -565,7 +567,8 @@ function adjustMapScrollToPosition(roomX, roomY) {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  font-size: small;
+  font-size: 1.6rem;
+  line-height: 3rem;
 }
 
 .map-sidebar.is-collapsed {
@@ -688,16 +691,20 @@ function adjustMapScrollToPosition(roomX, roomY) {
   padding: 2rem;
   max-width: 800px;
   margin: 3rem auto;
-  box-shadow: 0 4px 6px #0000001a;
-  border-radius: 5px;
-  background-color: #ffffff;
+
 
   .description-text {
     margin-bottom: 1.6rem;
+    font-size: 1.6rem;
+    line-height: 3rem;
   }
 
-  .dungeon-overview-form {
+  .content-container {
+    box-shadow: 0 4px 6px #0000001a;
     margin-top: 20px;
+    border-radius: 5px;
+    background-color: #ffffff;
+    padding: 20px;
 
     h3 {
       margin-top: 0;
@@ -765,6 +772,10 @@ function adjustMapScrollToPosition(roomX, roomY) {
     &.visible {
       transform: translateX(0);
     }
+
+    .saved-dungeons {
+      margin-top: 5rem;
+    }
   }
 }
 
@@ -775,13 +786,21 @@ function adjustMapScrollToPosition(roomX, roomY) {
     margin: 0 auto;
   }
 
+
+
   .app-container {
     flex-direction: column;
   }
 
   .main-content {
-    margin: 0 auto;
-    padding: 1rem;
+    margin: 1rem auto;
+    padding: 0;
+
+    .content-container {
+      padding: 0;
+      box-shadow: none;
+      margin: auto;
+    }
   }
 
   .map-and-sidebar-container {
@@ -865,6 +884,19 @@ function adjustMapScrollToPosition(roomX, roomY) {
 
   .overlay {
     display: block;
+  }
+
+  .generator-fields {
+    flex-direction: column;
+
+    p {
+      margin: 0;
+    }
+  }
+
+  .generator-field-input {
+    flex: 1 1 100%;
+    width: 100%;
   }
 }
 </style>

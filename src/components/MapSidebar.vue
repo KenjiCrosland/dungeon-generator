@@ -76,7 +76,7 @@ const toggleIcon = computed(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  font-size: small;
+  font-size: 1.6rem;
 }
 
 .map-sidebar.is-collapsed {
