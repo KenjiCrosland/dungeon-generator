@@ -117,7 +117,7 @@ export function useRoomDescription() {
       formRoomSummary,
       npcString,
     );
-    //console.log('Prompt:', prompt);
+    console.log('Prompt:', prompt);
     const response = await generateGptResponse(
       prompt,
       validateEntranceResponse,
@@ -144,7 +144,7 @@ export function useRoomDescription() {
       formRoomSummary,
       npcString,
     );
-    //console.log('Prompt:', prompt);
+    console.log('Prompt:', prompt);
     const customRoomResponse = await generateGptResponse(
       prompt,
       validateCustomRoomResponse,
@@ -176,7 +176,7 @@ export function useRoomDescription() {
       roomSummary,
       npcString,
     );
-    //console.log('Prompt:', prompt);
+    console.log('Prompt:', prompt);
     const response = await generateGptResponse(
       prompt,
       validateBossRoomResponse,
@@ -208,7 +208,7 @@ export function useRoomDescription() {
       roomSummary,
       npcString,
     );
-    //console.log('Prompt:', prompt);
+    console.log('Prompt:', prompt);
     const response = await generateGptResponse(
       prompt,
       validateSetbackRoomResponse,
@@ -245,7 +245,7 @@ export function useRoomDescription() {
       roomSummary,
       npcString,
     );
-    //console.log('Prompt:', prompt);
+    console.log('Prompt:', prompt);
     const response = await generateGptResponse(
       prompt,
       validateSecretRoomResponse,
@@ -277,7 +277,7 @@ export function useRoomDescription() {
       roomSummary,
       npcString,
     );
-    //console.log('Prompt:', prompt);
+    console.log('Prompt:', prompt);
     const response = await generateGptResponse(
       prompt,
       validateLockedRoomResponse,
@@ -304,7 +304,7 @@ export function useRoomDescription() {
       connectedRoomsInfo,
       npcString,
     );
-    //console.log('Prompt:', prompt);
+    console.log('Prompt:', prompt);
     const response = await generateGptResponse(
       prompt,
       validateLivingRoomResponse,
@@ -331,7 +331,7 @@ export function useRoomDescription() {
       connectedRoomsInfo,
       npcString,
     );
-    //console.log('Prompt:', prompt);
+    console.log('Prompt:', prompt);
     const response = await generateGptResponse(
       prompt,
       validateConnectingRoomResponse,
@@ -358,7 +358,7 @@ export function useRoomDescription() {
       connectedRoomsInfo,
       npcString,
     );
-    //console.log('Prompt:', prompt);
+    console.log('Prompt:', prompt);
     const response = await generateGptResponse(
       prompt,
       validatePurposeRoomResponse,
@@ -423,7 +423,7 @@ export function useRoomDescription() {
       secretRoomContentString,
     );
 
-    //console.log('Secret Door Prompt:', prompt);
+    console.log('Secret Door Prompt:', prompt);
 
     // Get the response for the secret door generation
     const secretDoorResponse = await generateGptResponse(
@@ -463,7 +463,7 @@ export function useRoomDescription() {
       keyRoomDescriptionString = contentArrayToString(keyRoom.contentArray);
     } else {
       // Key room has not been generated or has no content
-      //console.log('Key room content not found, proceeding without it');
+      console.log('Key room content not found, proceeding without it');
       // Proceed without the key room description
     }
 
@@ -478,7 +478,7 @@ export function useRoomDescription() {
       formRoomSummary,
       npcString,
     );
-    //console.log('Obstacle Prompt:', obstaclePrompt);
+    console.log('Obstacle Prompt:', obstaclePrompt);
 
     // Get the response and process it
     const obstacleResponse = await generateGptResponse(
@@ -520,7 +520,7 @@ export function useRoomDescription() {
       obstacleString = contentArrayToString(obstacleRoom.contentArray);
     } else {
       // Obstacle room does not have content
-      //console.log('Obstacle room content not found, proceeding without it');
+      console.log('Obstacle room content not found, proceeding without it');
       // We can proceed without the obstacle description
     }
 
@@ -533,7 +533,7 @@ export function useRoomDescription() {
       formRoomSummary,
       npcString,
     );
-    //console.log('Key Room Prompt:', keyPrompt);
+    console.log('Key Room Prompt:', keyPrompt);
 
     const keyRoomResponse = await generateGptResponse(
       keyPrompt,

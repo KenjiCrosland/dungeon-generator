@@ -58,26 +58,26 @@
 
           <div class="generator-fields">
             <cdr-input class="generator-field-input" inputContainerClass="generator-field-input" id="adjective"
-              v-model="dungeonStore.form.adjective" background="secondary" label="Adjective">
+              v-model="dungeonStore.overviewForm.adjective" background="secondary" label="Adjective">
               <template #helper-text-bottom>
                 Examples: "Forgotten", "Decaying", "Sunken"
               </template>
             </cdr-input>
             <cdr-input class="generator-field-input" inputContainerClass="generator-field-input" id="setting_type"
-              v-model="dungeonStore.form.setting_type" background="secondary" label="Type of Dungeon">
+              v-model="dungeonStore.overviewForm.setting_type" background="secondary" label="Type of Dungeon">
               <template #helper-text-bottom>
                 Examples: "Temple", "Fortress", "Outpost", "Catacombs"
               </template>
             </cdr-input>
             <p style="text-align: center;">Of</p>
             <cdr-input class="generator-field-input" inputContainerClass="generator-field-input" id="place_name"
-              v-model="dungeonStore.form.place_name" background="secondary" label="Place Name">
+              v-model="dungeonStore.overviewForm.place_name" background="secondary" label="Place Name">
               <template #helper-text-bottom>
                 Examples: "Forgotten Sun", "Grimhold", "Farwatch Outpost", "The Undercity"
               </template>
             </cdr-input>
           </div>
-          <cdr-select class="generator-field-select" id="difficulty" v-model="dungeonStore.form.difficulty"
+          <cdr-select class="generator-field-select" id="difficulty" v-model="dungeonStore.overviewForm.difficulty"
             background="secondary" label="Dungeon Difficulty" :options="difficultyOptions"
             :placeholder="'Select Difficulty'">
             <template #helper-text-bottom>
@@ -85,7 +85,7 @@
             </template>
           </cdr-select>
           <div class="lore-field-input">
-            <cdr-input :rows="5" tag="textarea" v-model="dungeonStore.form.place_lore" background="secondary"
+            <cdr-input :rows="5" tag="textarea" v-model="dungeonStore.overviewForm.place_lore" background="secondary"
               label="Dungeon Lore" placeholder="Enter any additional details about the dungeon">
               <template #helper-text-bottom>
                 Write any details about your dungeon that you want to include. Need help coming up with lore for your
@@ -116,6 +116,9 @@
                 {{ dungeonStore.currentDungeon.dungeonOverview.dominant_power }}
                 {{ dungeonStore.currentDungeon.dungeonOverview.dominant_power_goals }}
                 {{ dungeonStore.currentDungeon.dungeonOverview.dominant_power_minions }}
+              </p>
+              <p class="description-text">
+                {{ dungeonStore.currentDungeon.dungeonOverview.miniboss_description }}
               </p>
               <p class="description-text">
                 {{ dungeonStore.currentDungeon.dungeonOverview.dominant_power_event }}
@@ -235,14 +238,81 @@
             </cdr-form-group>
           </TabPanel>
           <TabPanel label="Statblocks">
-            <div style="text-align: center; margin-top: 2rem;">
-              <p>Statblocks will be integrated in a future version of this app.</p>
-              <p>For now please visit: <a href="https://cros.land/ai-powered-dnd-5e-monster-statblock-generator/"
-                  target="_blank">https://cros.land/ai-powered-dnd-5e-monster-statblock-generator/</a> to create
-                statblocks
-                for this dungeon.</p>
-            </div>
+            <template #default>
+              <div v-if="dungeonStore.currentDungeon
+                && dungeonStore.currentDungeon.dungeonOverview
+                && dungeonStore.currentDungeon.dungeonOverview.monsters
+                && dungeonStore.currentDungeon.dungeonOverview.monsters.length">
+                <h2>Dungeon Monsters</h2>
+                <cdr-accordion-group>
+                  <cdr-accordion v-for="(monster) in dungeonStore.currentDungeon.dungeonOverview.monsters"
+                    :key="monster.id" :id="'monster-' + monster.id" :opened="monster.opened"
+                    @accordion-toggle="monster.opened = !monster.opened" level="2">
+
+                    <template #label>
+                      {{ monster.name }}
+                    </template>
+                    <div>
+                      <h3>{{ monster.name }}</h3>
+                      <p>{{ monster.description }}</p>
+
+                      <!-- CR Select -->
+                      <cdr-select v-model="monster.CR" label="CR" background="secondary" :options="crOptions"
+                        :placeholder="'Select CR'">
+                      </cdr-select>
+                      <cdr-select v-model="monster.monsterType" label="Type"
+                        :options="['Random', 'Stronger Defense', 'Balanced', 'Stronger Offense']" />
+                      <!-- Spellcaster Checkbox -->
+                      <cdr-checkbox v-model="monster.isSpellcaster">
+                        Creature is a spellcaster
+                      </cdr-checkbox>
+                      <div
+                        v-if="monster.statblock || dungeonStore?.monsterLoadingStates[monster.id]?.part1 || dungeonStore?.monsterLoadingStates[monster.id]?.part2"
+                        style="margin-top: 1rem;">
+                        <Statblock :monster="monster.statblock" :premium="premium"
+                          :loadingPart1="dungeonStore.monsterLoadingStates[monster.id]?.part1 || false"
+                          :loadingPart2="dungeonStore.monsterLoadingStates[monster.id]?.part2 || false"
+                          @update-monster="updateMonsterStatblock(monster, $event)" />
+                      </div>
+                      <!-- Use store action for generation -->
+                      <cdr-button size="small" @click="dungeonStore.generateMonsterStatblock(monster.id, premium)">
+                        {{ dungeonStore.monsterLoadingStates[monster.id]?.generating ? 'Generating...' :
+                          'Generate Statblock' }}
+                      </cdr-button>
+
+
+                    </div>
+                  </cdr-accordion>
+                </cdr-accordion-group>
+              </div>
+              <div v-else>
+                <h2>No Monsters</h2>
+                <p>No monsters have been generated for this dungeon yet.</p>
+              </div>
+
+              <h3 style="margin-top: 3rem; margin-bottom: 1rem">Generate Statblock</h3>
+              <cdr-form-group :error="statblockFormError">
+                <cdr-input v-model="statblockForm.name" label="Name" />
+                <cdr-select v-model="statblockForm.CR" label="CR" background="secondary" :options="crOptions"
+                  :placeholder="'Select CR'">
+                  <template #helper-text-bottom>
+                    Select the CR for this creature.
+                  </template>
+                </cdr-select>
+                <cdr-input tag="textarea" v-model="statblockForm.description" label="Monster Description"
+                  background="secondary" :rows="5" placeholder="Describe the monster's abilities, personality, etc." />
+                <cdr-checkbox v-model="statblockForm.isSpellcaster">
+                  Creature is a spellcaster
+                </cdr-checkbox>
+
+                <cdr-button style="margin-top: 2rem" @click="generateStatblock" :disabled="generatingStatblock">
+                  {{ generatingStatblock ? 'Generating...' : 'Generate Statblock' }}
+                </cdr-button>
+              </cdr-form-group>
+            </template>
           </TabPanel>
+
+
         </Tabs>
       </div>
     </div>
@@ -258,12 +328,14 @@ import RoomDescription from './RoomDescription.vue';
 import OverviewSkeleton from './skeletons/OverviewSkeleton.vue';
 import NPCSkeleton from './skeletons/NPCSkeleton.vue';
 import MapSidebar from './MapSidebar.vue';
+import Statblock from './Statblock.vue';
 import {
   CdrInput,
   CdrButton,
   CdrTooltip,
   CdrLink,
   CdrSelect,
+  CdrCheckbox,
   CdrAccordionGroup,
   CdrAccordion,
   CdrFormGroup,
@@ -275,24 +347,57 @@ import { useDungeonStore } from '../stores/dungeon-store.mjs';
 import { dungeonToMarkdown } from '../util/dungeon-to-markdown.mjs';
 import { dungeonToHTML } from '../util/dungeon-to-html.mjs';
 import { dungeonToPlainText } from '../util/dungeon-to-plain-text.mjs';
+import crList from '../data/cr-list.json';
+import { canGenerateStatblock } from "../util/can-generate-statblock.mjs";
+
+const props = defineProps({
+  premium: { type: Boolean, default: false },
+});
 
 const dungeonStore = useDungeonStore();
 
 const windowWidth = ref(window.innerWidth);
-const isSidebarVisible = ref(false); // Start hidden on mobile
-
-
+const isSidebarVisible = ref(false);
 const mapContainer = ref(null);
 const dungeonMap = ref(null);
-const mapWrapper = ref(null); // Reference to the map wrapper
-const mapSidebarRef = ref(null); // Reference to the map sidebar component
+const mapWrapper = ref(null);
+const mapSidebarRef = ref(null);
 const mapContainerHeight = ref('auto');
 
-const isMobileWidth = computed(() => windowWidth.value <= 768);
-const mapContainerInlineStyles = computed(() => (
-  // Set the height of the map container to match the sidebar height for non-mobile
-  isMobileWidth.value ? {} : { height: mapContainerHeight.value }
-));
+const sidebarStyle = computed(() => {
+  if (windowWidth.value <= 1020) {
+    return {
+      position: 'fixed',
+      transform: isSidebarVisible.value ? 'translateX(0)' : 'translateX(-100%)',
+      width: '70%', // Adjust width for mobile
+      maxWidth: '400px',
+    };
+  } else {
+    return {
+      width: '400px',
+      position: 'static',
+      transform: 'none',
+    };
+  }
+});
+
+const crOptions = crList.fullArray;
+const statblockForm = ref({
+  name: '',
+  CR: '',
+  type: 'Random',
+  description: '',
+  isSpellcaster: false,
+});
+const statblockFormError = ref(null);
+const generatingStatblock = ref(false);
+
+// Updates the monster's statblock if the Statblock component emits an update
+function updateMonsterStatblock(monster, updatedMonster) {
+  monster.statblock = updatedMonster;
+  // Update the monster in the dungeon store
+  dungeonStore.updateMonster(monster);
+}
 
 function copyDungeonasMarkdown() {
   const markdown = dungeonToMarkdown(dungeonStore.currentDungeon);
@@ -340,28 +445,17 @@ function createNPC() {
 }
 
 function handleMapWrapperClick(event) {
-  if (dungeonStore.isMapSidebarCollapsed) {
-    // Sidebar is already closed; do nothing
-    return;
-  }
+  if (dungeonStore.isMapSidebarCollapsed) return;
 
-  // Get the DungeonMap element
   const dungeonMapElement = dungeonMap.value.$el;
   const sidebarElement = mapSidebarRef.value.$el;
 
-  // Check if the click was inside DungeonMap or the Map Sidebar
-  if (
-    dungeonMapElement.contains(event.target) ||
-    sidebarElement.contains(event.target)
-  ) {
-    // Click was inside DungeonMap or the sidebar; do nothing
+  if (dungeonMapElement.contains(event.target) || sidebarElement.contains(event.target)) {
     return;
   }
 
-  // Click was outside DungeonMap and the sidebar; close the sidebar
   dungeonStore.isMapSidebarCollapsed = true;
 }
-
 
 const difficultyOptions = [
   'Tier 1: Basic - A local hero in the making.',
@@ -370,7 +464,6 @@ const difficultyOptions = [
   'Tier 4: Master - A hero of the world.',
   'Tier 5: Immortal - A hero of the realms.',
 ]
-
 
 function updateMapContainerHeight() {
   if (mapContainer.value) {
@@ -396,7 +489,6 @@ watch(
 
 function handleGenerateMapClick() {
   if (dungeonStore.currentDungeon && dungeonStore.currentDungeon.rooms) {
-    // A map already exists, ask for confirmation
     const confirmed = window.confirm(
       'Are you sure you want to re-generate the map? This will overwrite the existing map and all of its room descriptions.'
     );
@@ -404,28 +496,14 @@ function handleGenerateMapClick() {
       dungeonStore.generateMap();
     }
   } else {
-    // No map exists, generate one directly
     dungeonStore.generateMap();
   }
 }
 
-
-const sidebarStyle = computed(() => {
-  if (windowWidth.value <= 1020) {
-    return {
-      position: 'fixed',
-      transform: isSidebarVisible.value ? 'translateX(0)' : 'translateX(-100%)',
-      width: '70%', // Adjust width for mobile
-      maxWidth: '400px',
-    };
-  } else {
-    return {
-      width: '400px',
-      position: 'static',
-      transform: 'none',
-    };
-  }
-});
+const isMobileWidth = computed(() => windowWidth.value <= 768);
+const mapContainerInlineStyles = computed(() => (
+  isMobileWidth.value ? {} : { height: mapContainerHeight.value }
+));
 
 const updateWindowWidth = () => {
   windowWidth.value = window.innerWidth;
@@ -441,7 +519,6 @@ function handleRoomClick({ roomId, x, y }) {
   dungeonStore.lastClickedRoomX = x;
 
   if (!isMobileWidth.value) {
-    // Desktop behavior remains the same
     if (dungeonStore.isMapSidebarCollapsed) {
       dungeonStore.isMapSidebarCollapsed = false;
       setTimeout(() => {
@@ -451,7 +528,6 @@ function handleRoomClick({ roomId, x, y }) {
       adjustMapScrollPosition(x);
     }
   } else {
-    // Mobile behavior: scroll both horizontally and vertically
     if (dungeonStore.isMapSidebarCollapsed) {
       dungeonStore.isMapSidebarCollapsed = false;
       setTimeout(() => {
@@ -464,7 +540,6 @@ function handleRoomClick({ roomId, x, y }) {
 }
 
 function handleMapClick() {
-  // Collapse the map sidebar if it's not already collapsed
   if (!dungeonStore.isMapSidebarCollapsed) {
     dungeonStore.isMapSidebarCollapsed = true;
   }
@@ -472,14 +547,8 @@ function handleMapClick() {
 
 function adjustMapScrollPosition(roomX) {
   if (mapWrapper.value) {
-    // Get the current scroll position and visible area
-    const scrollLeft = mapWrapper.value.scrollLeft;
     const visibleWidth = mapWrapper.value.clientWidth;
-
-    // Calculate the new scroll position to center the clicked room
     const targetScrollLeft = roomX - visibleWidth / 2;
-
-    // Adjust the scroll position
     mapWrapper.value.scrollTo({
       left: targetScrollLeft,
       behavior: 'smooth',
@@ -494,7 +563,6 @@ function adjustMapScrollToPosition(roomX, roomY) {
     const maxScrollLeft = mapWrapper.value.scrollWidth - visibleWidth;
     const maxScrollTop = mapWrapper.value.scrollHeight - visibleHeight;
 
-    // Calculate the new scroll positions with limits
     const targetScrollLeft = Math.min(Math.max(roomX - visibleWidth / 2, 0), maxScrollLeft);
     const targetScrollTop = Math.min(Math.max(roomY - visibleHeight / 2, 0), maxScrollTop);
 
@@ -506,9 +574,31 @@ function adjustMapScrollToPosition(roomX, roomY) {
   }
 }
 
+// Generate a custom statblock from the form at the bottom
+async function generateStatblock() {
+  if (!dungeonStore.currentDungeon) {
+    statblockFormError.value = 'No dungeon selected.';
+    return;
+  }
 
-
+  generatingStatblock.value = true;
+  try {
+    const generated = await dungeonStore.generateAndSaveStatblock({
+      name: statblockForm.value.name,
+      CR: statblockForm.value.CR,
+      description: statblockForm.value.description,
+      isSpellcaster: statblockForm.value.isSpellcaster,
+      premium: props.premium
+    });
+    // Handle or display the generated statblock from dungeonStore.currentDungeon.statblocks if desired
+  } catch (error) {
+    statblockFormError.value = error.message;
+  } finally {
+    generatingStatblock.value = false;
+  }
+}
 </script>
+
 <style scoped lang="scss">
 @import '@rei/cdr-tokens/dist/rei-dot-com/scss/cdr-tokens.scss';
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
@@ -557,7 +647,6 @@ function adjustMapScrollToPosition(roomX, roomY) {
   /* Optional: Add styles for content inside the sidebar */
 }
 
-/* Map Sidebar styles */
 .map-sidebar {
   background-color: #fafaf6;
   border-left: 1px solid #ccc;
@@ -595,7 +684,6 @@ function adjustMapScrollToPosition(roomX, roomY) {
   height: 100%;
 }
 
-/* Overlay for mobile sidebar */
 .overlay {
   position: fixed;
   top: 0;
@@ -606,7 +694,6 @@ function adjustMapScrollToPosition(roomX, roomY) {
   z-index: 2;
 }
 
-/* Sidebar Toggle Button */
 .sidebar-toggle {
   display: none;
   position: fixed;
@@ -619,7 +706,6 @@ function adjustMapScrollToPosition(roomX, roomY) {
   }
 }
 
-/* Sidebar Styles */
 .sidebar {
   width: 250px;
   background-color: #f4f4f4;
@@ -684,7 +770,6 @@ function adjustMapScrollToPosition(roomX, roomY) {
   }
 }
 
-/* Main Content Styles */
 .main-content {
   flex: 1;
   margin-left: 250px;
@@ -759,7 +844,6 @@ function adjustMapScrollToPosition(roomX, roomY) {
   margin-top: 2rem;
 }
 
-/* Adjust main content when sidebar is hidden */
 @media (max-width: 1020px) {
   .main-content {
     margin-left: 0;
@@ -812,12 +896,9 @@ function adjustMapScrollToPosition(roomX, roomY) {
   }
 
   .dungeon-map-wrapper {
-
     margin-bottom: 500px;
-    /* Match the sidebar height */
   }
 
-  /* Adjust the .map-sidebar for mobile */
   .map-sidebar-container {
     position: fixed;
     bottom: 0;
@@ -843,13 +924,11 @@ function adjustMapScrollToPosition(roomX, roomY) {
 
   .map-sidebar:not(.is-collapsed) {
     height: 200px;
-    /* Adjust this height as needed */
   }
 
   .toggle-button {
     position: fixed;
     bottom: 210px;
-    /* Adjust based on sidebar height */
     right: 10px;
     width: 40px;
     height: 40px;
@@ -867,7 +946,6 @@ function adjustMapScrollToPosition(roomX, roomY) {
     height: 100%;
   }
 
-  /* Adjust main content when sidebar is hidden */
   .main-content {
     margin-left: 0;
   }
