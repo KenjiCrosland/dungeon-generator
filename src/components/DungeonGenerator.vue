@@ -255,7 +255,14 @@
                     <div>
                       <h3>{{ monster.name }}</h3>
                       <p>{{ monster.description }}</p>
-
+                      <div
+                        v-if="monster.statblock || dungeonStore?.monsterLoadingStates[monster.id]?.part1 || dungeonStore?.monsterLoadingStates[monster.id]?.part2"
+                        style="margin-top: 1rem;">
+                        <Statblock :monster="monster.statblock" :premium="premium"
+                          :loadingPart1="dungeonStore.monsterLoadingStates[monster.id]?.part1 || false"
+                          :loadingPart2="dungeonStore.monsterLoadingStates[monster.id]?.part2 || false"
+                          @update-monster="updateMonsterStatblock(monster, $event)" />
+                      </div>
                       <!-- CR Select -->
                       <cdr-select v-model="monster.CR" label="CR" background="secondary" :options="crOptions"
                         :placeholder="'Select CR'">
@@ -266,21 +273,11 @@
                       <cdr-checkbox v-model="monster.isSpellcaster">
                         Creature is a spellcaster
                       </cdr-checkbox>
-                      <div
-                        v-if="monster.statblock || dungeonStore?.monsterLoadingStates[monster.id]?.part1 || dungeonStore?.monsterLoadingStates[monster.id]?.part2"
-                        style="margin-top: 1rem;">
-                        <Statblock :monster="monster.statblock" :premium="premium"
-                          :loadingPart1="dungeonStore.monsterLoadingStates[monster.id]?.part1 || false"
-                          :loadingPart2="dungeonStore.monsterLoadingStates[monster.id]?.part2 || false"
-                          @update-monster="updateMonsterStatblock(monster, $event)" />
-                      </div>
                       <!-- Use store action for generation -->
                       <cdr-button size="small" @click="dungeonStore.generateMonsterStatblock(monster.id, premium)">
                         {{ dungeonStore.monsterLoadingStates[monster.id]?.generating ? 'Generating...' :
                           'Generate Statblock' }}
                       </cdr-button>
-
-
                     </div>
                   </cdr-accordion>
                 </cdr-accordion-group>
