@@ -328,7 +328,7 @@ import RoomDescription from './RoomDescription.vue';
 import OverviewSkeleton from './skeletons/OverviewSkeleton.vue';
 import NPCSkeleton from './skeletons/NPCSkeleton.vue';
 import MapSidebar from './MapSidebar.vue';
-import Statblock from './Statblock.vue';
+import Statblock from './statblock/Statblock.vue';
 import {
   CdrInput,
   CdrButton,

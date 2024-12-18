@@ -243,12 +243,12 @@
 <script setup>
 import { ref, computed, defineProps, onMounted, onBeforeUnmount, watch } from 'vue';
 import { CdrButton } from '@rei/cedar';
-import CRtoXP from '../data/cr-to-xp.json';
-import { generateGptResponse } from "../util/open-ai.mjs";
-import { legendaryActionsPrompt, actionsPrompt, monsterAbilitiesPrompt } from "../prompts/statblock-edit-prompts.mjs";
-import StatblockSkeletonPtOne from './StatblockSkeletonPtOne.vue';
-import StatblockSkeletonPtTwo from './StatblockSkeletonPtTwo.vue';
-import StatblockAbilitiesSkeleton from './skeletons/StatblockAbilitiesSkeleton.vue';
+import CRtoXP from '../../data/cr-to-xp.json';
+import { generateGptResponse } from "../../util/open-ai.mjs";
+import { legendaryActionsPrompt, actionsPrompt, monsterAbilitiesPrompt } from "../../prompts/statblock-edit-prompts.mjs";
+import StatblockSkeletonPtOne from '../skeletons/StatblockSkeletonPtOne.vue';
+import StatblockSkeletonPtTwo from '../skeletons/StatblockSkeletonPtTwo.vue';
+import StatblockAbilitiesSkeleton from '../skeletons/StatblockAbilitiesSkeleton.vue';
 
 const props = defineProps({
     monster: {
