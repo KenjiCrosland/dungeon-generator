@@ -49,8 +49,10 @@ export async function generateMonsterStatblock(monsterId, premium) {
     part2: true,
     generating: true,
   };
+
   let part1Data = null;
   let part2Data = null;
+  let statblockId = monster.id || crypto.randomUUID();
 
   try {
     const fullDescription = `${
@@ -63,10 +65,8 @@ export async function generateMonsterStatblock(monsterId, premium) {
       monsterDescription: fullDescription,
       caster: monster.isSpellcaster || false,
     };
-    console.log('Prompt Options', promptOptions);
     const statblockPrompts = createStatblockPrompts(promptOptions);
-    console.log('PArt 1', statblockPrompts.part1);
-    console.log('PArt 2', statblockPrompts.part2);
+
     // Part 1
     let npcStatsPart1 = await generateGptResponse(
       statblockPrompts.part1,
@@ -74,8 +74,20 @@ export async function generateMonsterStatblock(monsterId, premium) {
       3,
     );
     part1Data = JSON.parse(npcStatsPart1);
-    monster.statblock = { ...part1Data };
-    currentDungeon.value.statblocks.push(monster.statblock);
+
+    // Assign partial statblock now so user can see partial progress
+    const partialStatblock = { id: statblockId, ...part1Data };
+    monster.statblock = partialStatblock;
+
+    // Check if we already have a statblock with this id
+    const existingIdx = currentDungeon.value.statblocks.findIndex(
+      (sb) => sb.id === statblockId,
+    );
+    if (existingIdx !== -1) {
+      currentDungeon.value.statblocks[existingIdx] = partialStatblock;
+    } else {
+      currentDungeon.value.statblocks.push(partialStatblock);
+    }
     saveDungeons();
 
     monsterLoadingStates.value[monsterId] = {
@@ -104,29 +116,44 @@ export async function generateMonsterStatblock(monsterId, premium) {
       );
     } catch (error) {
       console.error('Error generating part 2 of statblock:', error);
-      const idx = currentDungeon.value.statblocks.indexOf(monster.statblock);
-      if (idx !== -1) currentDungeon.value.statblocks.splice(idx, 1);
+      // Remove partial statblock since part2 failed
+      const idx = currentDungeon.value.statblocks.findIndex(
+        (sb) => sb.id === statblockId,
+      );
+      if (idx !== -1) {
+        currentDungeon.value.statblocks.splice(idx, 1);
+      }
       monster.statblock = undefined;
       saveDungeons();
       throw error;
     }
 
     part2Data = JSON.parse(npcStatsPart2);
-    monster.statblock = { ...part1Data, ...part2Data };
+    const finalStatblock = { id: statblockId, ...part1Data, ...part2Data };
+    monster.statblock = finalStatblock;
 
-    // Replace partial statblock
-    const partialIdx = currentDungeon.value.statblocks.indexOf(part1Data);
+    // Replace partial with final
+    const partialIdx = currentDungeon.value.statblocks.findIndex(
+      (sb) => sb.id === statblockId,
+    );
     if (partialIdx !== -1) {
-      currentDungeon.value.statblocks[partialIdx] = monster.statblock;
+      currentDungeon.value.statblocks[partialIdx] = finalStatblock;
     } else {
-      currentDungeon.value.statblocks.push(monster.statblock);
+      currentDungeon.value.statblocks.push(finalStatblock);
     }
+
     saveDungeons();
   } catch (e) {
     console.error('Error generating monster statblock:', e);
     if (part1Data && !part2Data) {
-      const idx = currentDungeon.value.statblocks.indexOf(monster.statblock);
-      if (idx !== -1) currentDungeon.value.statblocks.splice(idx, 1);
+      // If we had part1 but failed before part2 was saved,
+      // remove the partial statblock from the dungeon
+      const idx = currentDungeon.value.statblocks.findIndex(
+        (sb) => sb.id === statblockId,
+      );
+      if (idx !== -1) {
+        currentDungeon.value.statblocks.splice(idx, 1);
+      }
       monster.statblock = undefined;
       saveDungeons();
     }
@@ -140,12 +167,39 @@ export async function generateMonsterStatblock(monsterId, premium) {
   }
 }
 
+export async function updateStatblock(monsterId, statblock) {
+  if (!currentDungeon.value) return;
+
+  const monster = findMonsterById(currentDungeon, monsterId);
+  if (!monster) {
+    console.error('Monster not found');
+    return;
+  }
+
+  // Ensure the statblock has an id
+  if (!statblock.id) {
+    statblock.id = monster.id || crypto.randomUUID();
+  }
+
+  monster.statblock = statblock;
+  const existingIdx = currentDungeon.value.statblocks.findIndex(
+    (sb) => sb.id === statblock.id,
+  );
+  if (existingIdx !== -1) {
+    currentDungeon.value.statblocks[existingIdx] = statblock;
+  } else {
+    currentDungeon.value.statblocks.push(statblock);
+  }
+  saveDungeons();
+}
+
 export async function generateAndSaveStatblock({
   name,
   CR,
   description,
   isSpellcaster,
   premium,
+  monsterType,
 }) {
   if (!currentDungeon.value) {
     console.error('No dungeon selected');
@@ -162,8 +216,21 @@ export async function generateAndSaveStatblock({
       description,
       isSpellcaster,
       premium,
+      monsterType,
     });
-    currentDungeon.value.statblocks.push(statblock);
+
+    if (!statblock.id) {
+      statblock.id = crypto.randomUUID();
+    }
+
+    const existingIdx = currentDungeon.value.statblocks.findIndex(
+      (sb) => sb.id === statblock.id,
+    );
+    if (existingIdx !== -1) {
+      currentDungeon.value.statblocks[existingIdx] = statblock;
+    } else {
+      currentDungeon.value.statblocks.push(statblock);
+    }
     saveDungeons();
     return statblock;
   } catch (error) {

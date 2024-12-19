@@ -1,6 +1,6 @@
 <template>
   <div id="app">
-    <DungeonGenerator />
+    <DungeonGenerator :premium="true" />
   </div>
 </template>
 

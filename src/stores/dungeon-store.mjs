@@ -22,6 +22,7 @@ import { generateDungeonNPC, deleteNPC, addNPC } from './npc-store.mjs';
 import {
   generateMonsterStatblock,
   generateAndSaveStatblock,
+  updateStatblock,
 } from './statblock-store.mjs';
 
 export const useDungeonStore = defineStore('dungeon', () => {
@@ -91,5 +92,6 @@ export const useDungeonStore = defineStore('dungeon', () => {
     handleUpdateRoomDescription,
     generateAndSaveStatblock,
     generateMonsterStatblock,
+    updateStatblock,
   };
 });
