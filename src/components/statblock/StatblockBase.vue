@@ -126,7 +126,7 @@
 <script setup>
 import StatblockSkeletonPtOne from './skeletons/StatblockSkeletonPtOne.vue';
 import StatblockSkeletonPtTwo from './skeletons/StatblockSkeletonPtTwo.vue';
-import { ref, computed, defineProps, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { statblockToMarkdown } from '../util/convertToMarkdown.mjs';
 import { convertToImprovedInitiative } from '../util/convertToImprovedInitiative.mjs';
 import { convertToFoundryVTT } from '../util/convertToFoundryVTT.mjs';

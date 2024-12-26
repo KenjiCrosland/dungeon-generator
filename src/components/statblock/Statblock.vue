@@ -241,7 +241,7 @@
 </template>
 
 <script setup>
-import { ref, computed, defineProps, onMounted, onBeforeUnmount, watch } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { CdrButton } from '@rei/cedar';
 import CRtoXP from '../../data/cr-to-xp.json';
 import { generateGptResponse } from "../../util/open-ai.mjs";

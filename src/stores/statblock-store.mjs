@@ -1,8 +1,13 @@
 import { currentDungeon, monsterLoadingStates } from './dungeon-state.mjs';
+import { currentDungeonOverviewString } from './overview-store.mjs';
 import { saveDungeons, findMonsterById } from './dungeon-utils.mjs';
 import { canGenerateStatblock } from '../util/can-generate-statblock.mjs';
 import { generateGptResponse } from '../util/open-ai.mjs';
 import { createStatblockPrompts } from '../prompts/monster-prompts.mjs';
+import {
+  monsterDescriptionPrompt,
+  validateMonsterDescription,
+} from '../prompts/monster-description.mjs';
 
 function sbValidationPart1(jsonString) {
   try {
@@ -47,6 +52,7 @@ export async function generateMonsterStatblock(monsterId, premium) {
   monsterLoadingStates.value[monsterId] = {
     part1: true,
     part2: true,
+    description: false,
     generating: true,
   };
 
@@ -93,6 +99,7 @@ export async function generateMonsterStatblock(monsterId, premium) {
     monsterLoadingStates.value[monsterId] = {
       part1: false,
       part2: true,
+      description: false,
       generating: true,
     };
 
@@ -161,6 +168,7 @@ export async function generateMonsterStatblock(monsterId, premium) {
     monsterLoadingStates.value[monsterId] = {
       part1: false,
       part2: false,
+      description: false,
       generating: false,
     };
     saveDungeons();
@@ -236,5 +244,59 @@ export async function generateAndSaveStatblock({
   } catch (error) {
     console.error('Error generating statblock:', error);
     throw error;
+  }
+}
+
+export async function generateMonsterDescription(monster) {
+  if (!currentDungeon.value) return;
+
+  if (!monster) {
+    console.error('Monster not found');
+    return;
+  }
+
+  const overview = currentDungeonOverviewString.value;
+
+  try {
+    // Generate the detailed monster description
+    monsterLoadingStates.value[monster.id] = {
+      part1: false,
+      part2: false,
+      description: true,
+      generating: true,
+    };
+    const descriptionPrompt = monsterDescriptionPrompt(overview, monster);
+    const detailedDescription = await generateGptResponse(
+      descriptionPrompt,
+      validateMonsterDescription,
+      3,
+    );
+
+    const descriptionData = JSON.parse(detailedDescription);
+    monster.detailedDescription = descriptionData;
+
+    monsterLoadingStates.value[monster.id] = {
+      part1: false,
+      part2: false,
+      description: false,
+      generating: true,
+    };
+
+    // Save the description to the monster
+    const existingIdx = currentDungeon.value.statblocks.findIndex(
+      (sb) => sb.id === monster.id,
+    );
+    if (existingIdx !== -1) {
+      currentDungeon.value.statblocks[existingIdx].description =
+        descriptionData;
+    } else {
+      currentDungeon.value.statblocks.push({
+        id: monster.id,
+        description: descriptionData,
+      });
+    }
+    saveDungeons();
+  } catch (error) {
+    console.error('Error generating monster description', error);
   }
 }

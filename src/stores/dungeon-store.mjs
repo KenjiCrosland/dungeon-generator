@@ -16,13 +16,17 @@ import {
 } from './dungeon-state.mjs';
 
 import { saveDungeons, loadDungeons } from './dungeon-utils.mjs';
-import { generateDungeonOverview } from './overview-store.mjs';
+import {
+  generateDungeonOverview,
+  currentDungeonOverviewString,
+} from './overview-store.mjs';
 import { generateMap, handleUpdateRoomDescription } from './map-store.mjs';
 import { generateDungeonNPC, deleteNPC, addNPC } from './npc-store.mjs';
 import {
   generateMonsterStatblock,
   generateAndSaveStatblock,
   updateStatblock,
+  generateMonsterDescription,
 } from './statblock-store.mjs';
 
 export const useDungeonStore = defineStore('dungeon', () => {
@@ -76,6 +80,7 @@ export const useDungeonStore = defineStore('dungeon', () => {
     overviewForm,
     monsterLoadingStates,
     currentDungeon,
+    currentDungeonOverviewString,
 
     // Actions
     saveDungeons,
@@ -92,6 +97,7 @@ export const useDungeonStore = defineStore('dungeon', () => {
     handleUpdateRoomDescription,
     generateAndSaveStatblock,
     generateMonsterStatblock,
+    generateMonsterDescription,
     updateStatblock,
   };
 });

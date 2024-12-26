@@ -5,7 +5,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch, defineExpose } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 const emit = defineEmits(['roomClicked', 'mapClicked']);
 
 const props = defineProps({

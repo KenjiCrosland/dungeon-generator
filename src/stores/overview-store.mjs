@@ -1,3 +1,4 @@
+import { computed } from 'vue';
 import adjectives from '../data/adjectives.json';
 import potentialNames from '../data/dungeon-names.json';
 import { generateGptResponse } from '../util/open-ai.mjs';
@@ -11,8 +12,32 @@ import {
   loadingOverview,
   activeTabIndex,
   overviewForm,
+  currentDungeon,
 } from './dungeon-state.mjs';
 import { saveDungeons } from './dungeon-utils.mjs';
+
+export const currentDungeonOverviewString = computed(() => {
+  if (currentDungeon.value && currentDungeon.value.dungeonOverview) {
+    return `${currentDungeon.value.dungeonOverview.overview}
+
+${currentDungeon.value.dungeonOverview.relation_to_larger_setting} ${currentDungeon.value.dungeonOverview.finding_the_dungeon}
+    
+${currentDungeon.value.dungeonOverview.history}
+    
+${currentDungeon.value.dungeonOverview.dominant_power} ${currentDungeon.value.dungeonOverview.dominant_power_goals} ${currentDungeon.value.dungeonOverview.dominant_power_minions}
+    
+${currentDungeon.value.dungeonOverview.miniboss_description}
+    
+${currentDungeon.value.dungeonOverview.dominant_power_event} ${currentDungeon.value.dungeonOverview.recent_event_consequences}
+
+${currentDungeon.value.dungeonOverview.secondary_power} ${currentDungeon.value.dungeonOverview.secondary_power_event}
+    
+${currentDungeon.value.dungeonOverview.main_problem} ${currentDungeon.value.dungeonOverview.potential_solutions}
+    
+${currentDungeon.value.dungeonOverview.conclusion}`;
+  }
+  return '';
+});
 
 export async function generateDungeonOverview() {
   try {

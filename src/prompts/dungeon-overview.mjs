@@ -16,40 +16,40 @@ export function dungeonOverviewPrompt(
 
   // Define CR scaling based on difficulty tier
   let minionCR = '1/4';
-  let lieutenantCR = '1';
-  let minibossCR = '3';
+  let strongMinionCR = '1';
+  let largeCreatureCR = '3';
 
   switch (difficulty) {
     case 'Tier 1: Basic - A local hero in the making.':
       minionCR = '1/4';
-      lieutenantCR = '1';
-      minibossCR = '3';
+      strongMinionCR = '1';
+      largeCreatureCR = '3';
       break;
     case 'Tier 2: Expert - An established local hero.':
       minionCR = '1/2';
-      lieutenantCR = '2';
-      minibossCR = '4';
+      strongMinionCR = '2';
+      largeCreatureCR = '4';
       break;
     case 'Tier 3: Champion - A regional/kingdom hero.':
       minionCR = '2';
-      lieutenantCR = '5';
-      minibossCR = '7';
+      strongMinionCR = '5';
+      largeCreatureCR = '7';
       break;
     case 'Tier 4: Master - A hero of the world.':
       minionCR = '5';
-      lieutenantCR = '10';
-      minibossCR = '13';
+      strongMinionCR = '10';
+      largeCreatureCR = '13';
       break;
     case 'Tier 5: Immortal - A hero of the realms.':
       minionCR = '10';
-      lieutenantCR = '15';
-      minibossCR = '20';
+      strongMinionCR = '15';
+      largeCreatureCR = '20';
       break;
     default:
       // Default values if difficulty is not provided or recognized
       minionCR = '1/4';
-      lieutenantCR = '1';
-      minibossCR = '3';
+      strongMinionCR = '1';
+      largeCreatureCR = '3';
       break;
   }
 
@@ -63,8 +63,8 @@ export function dungeonOverviewPrompt(
 
   The dungeon should have three types of monsters:
   1. **Minions**: These are low-level creatures that serve as the basic underlings for the dominant power. CR ~ ${minionCR}. Describe what they are and how they serve the dominant entity. If you wish, include details about their boons or special weapons.
-  2. **Lieutenant**: A more powerful creature aligned (or once aligned) with the dominant power. This creature should be of the same general type as the minions, but stronger or more capable. CR ~ ${lieutenantCR}.
-  3. **Miniboss**: A significant foe who may or may not be directly loyal to the dominant power, possibly seeking their own agenda. CR ~ ${minibossCR}. After describing the minions, add a paragraph (miniboss paragraph) describing this creature’s role and how it differs from the minions and lieutenant. This miniboss should have some unique twist, such as a wizard who hopes to bargain with the dominant entity rather than serving it directly.
+  2. **Lieutenant**: A more powerful creature aligned (or once aligned) with the dominant power. This creature should be of the same general type as the minions, but stronger or more capable. CR ~ ${strongMinionCR}.
+  3. **Miniboss**: A significant foe who may or may not be directly loyal to the dominant power, possibly seeking their own agenda. CR ~ ${largeCreatureCR}. After describing the minions, add a paragraph (miniboss paragraph) describing this creature’s role and how it differs from the minions and lieutenant. This miniboss should have some unique twist, such as a wizard who hopes to bargain with the dominant entity rather than serving it directly.
 
   Return the description in JSON format with the following keys. Make sure the npc_list includes all npc names mentioned in the description. The NPCs in npc_list should only be individuals and NOT organizations or groups. If a group or faction is mentioned, come up with the name of an individual within that group. NPCs are not necessarily human. They could be monsters that have intelligence, a personality and a name. Avoid the banned NPC names. Keep descriptions concise, avoid run-on sentences:
   {
@@ -96,16 +96,16 @@ export function dungeonOverviewPrompt(
         CR: "${minionCR}"
       },
       {
-        type: "lieutenant",
-        name: "Lieutenant Name",
-        description: "A brief description of the lieutenant and how it differs from the minions",
-        CR: "${lieutenantCR}"
+        type: "strong_minion",
+        name: "Strong Minion Name",
+        description: "A brief description of the strong minions and how they differ from the regular minions",
+        CR: "${strongMinionCR}"
       },
       {
-        type: "miniboss",
-        name: "Miniboss Name",
-        description: "A brief description of the miniboss and their agenda. Mention they may not be fully loyal and wants to bargain or strike a deal.",
-        CR: "${minibossCR}"
+        type: "large_creature",
+        name: "Large Creature Name",
+        description: "A brief description of the large creature and how it differs from the minions and lieutenant. This is not the miniboss.",
+        CR: "${largeCreatureCR}"
       }
     ],
     npc_list: [

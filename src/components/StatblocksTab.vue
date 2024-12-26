@@ -16,7 +16,18 @@
           </template>
           <div>
             <h3>{{ monster.name }}</h3>
-            <p>{{ monster.description }}</p>
+            <p v-if="!monster.detailedDescription && !dungeonStore.monsterLoadingStates[monster.id]?.description">{{
+              monster.description }}</p>
+            <div v-if="monster.detailedDescription && !dungeonStore.monsterLoadingStates[monster.id]?.description">
+              <p>{{ monster.detailedDescription.intro }}</p>
+              <p>{{ monster.detailedDescription.appearance }}</p>
+              <p>{{ monster.detailedDescription.behaviorAbilities }}</p>
+              <p>{{ monster.detailedDescription.lore }}</p>
+            </div>
+            <MonsterDescriptionSkeleton v-if="dungeonStore.monsterLoadingStates[monster.id]?.description" />
+            <cdr-button size="small" @click="generateMonsterDescription(monster)">
+              {{ monster.detailedDescription ? 'Re-generate Description' : 'Generate Description' }}
+            </cdr-button>
             <div
               v-if="monster.statblock || dungeonStore?.monsterLoadingStates[monster.id]?.part1 || dungeonStore?.monsterLoadingStates[monster.id]?.part2"
               style="margin-top: 1rem;">
@@ -74,6 +85,7 @@ import { useDungeonStore } from '@/stores/dungeon-store.mjs';
 import Statblock from '@/components/statblock/Statblock.vue';
 import { CdrSelect, CdrCheckbox, CdrButton, CdrFormGroup, CdrInput, CdrAccordion, CdrAccordionGroup } from '@rei/cedar';
 import crList from '@/data/cr-list.json';
+import MonsterDescriptionSkeleton from '@/components/skeletons/MonsterDescriptionSkeleton.vue';
 
 const dungeonStore = useDungeonStore();
 const props = defineProps({ premium: { type: Boolean, default: false } });
@@ -92,12 +104,17 @@ const statblockFormError = ref(null);
 const generatingStatblock = ref(false);
 
 function updateMonsterStatblock(monster, updatedMonster) {
-  // Update the monster object’s statblock locally
   monster.statblock = updatedMonster;
-  // Then call the store method with the monster’s id and the updated statblock
   dungeonStore.updateStatblock(monster.id, updatedMonster);
 }
 
+async function generateMonsterDescription(monster) {
+  try {
+    await dungeonStore.generateMonsterDescription(monster);
+  } catch (error) {
+    console.error('Error generating monster description', error);
+  }
+}
 
 async function generateStatblock() {
   if (!dungeonStore.currentDungeon) {
