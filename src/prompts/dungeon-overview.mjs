@@ -14,39 +14,64 @@ export function dungeonOverviewPrompt(
     setting_type = 'the setting';
   }
 
-  // Define CR scaling based on difficulty tier
+  //randomize the difficulty if not provided
+  if (!difficulty) {
+    const difficultyLevels = [
+      'Tier 1: Basic - A local hero in the making.',
+      'Tier 2: Expert - An established local hero.',
+      'Tier 3: Champion - A regional/kingdom hero.',
+      'Tier 4: Master - A hero of the world.',
+      'Tier 5: Immortal - A hero of the realms.',
+    ];
+    difficulty =
+      difficultyLevels[Math.floor(Math.random() * difficultyLevels.length)];
+  }
+
+  // We'll extract the tier number from something like "Tier 3: Champion - A regional/kingdom hero."
+  function extractDifficultyTier(difficultyString) {
+    if (!difficultyString) return 1; // default to Tier 1 if there's no string
+    const match = difficultyString.match(/Tier\s+(\d+)/i);
+    if (!match) return 1; // fallback to Tier 1
+    return parseInt(match[1], 10);
+  }
+
+  // Actually get the tier number
+  const tier = extractDifficultyTier(difficulty);
+
+  // Default CR values
   let minionCR = '1/4';
   let strongMinionCR = '1';
   let largeCreatureCR = '3';
 
-  switch (difficulty) {
-    case 'Tier 1: Basic - A local hero in the making.':
+  // Switch on the numeric tier
+  switch (tier) {
+    case 1: // Tier 1: Basic
       minionCR = '1/4';
       strongMinionCR = '1';
       largeCreatureCR = '3';
       break;
-    case 'Tier 2: Expert - An established local hero.':
+    case 2: // Tier 2: Expert
       minionCR = '1/2';
       strongMinionCR = '2';
       largeCreatureCR = '4';
       break;
-    case 'Tier 3: Champion - A regional/kingdom hero.':
+    case 3: // Tier 3: Champion
       minionCR = '2';
       strongMinionCR = '5';
       largeCreatureCR = '7';
       break;
-    case 'Tier 4: Master - A hero of the world.':
+    case 4: // Tier 4: Master
       minionCR = '5';
       strongMinionCR = '10';
       largeCreatureCR = '13';
       break;
-    case 'Tier 5: Immortal - A hero of the realms.':
+    case 5: // Tier 5: Immortal
       minionCR = '10';
       strongMinionCR = '15';
       largeCreatureCR = '20';
       break;
     default:
-      // Default values if difficulty is not provided or recognized
+      // Fallback logic
       minionCR = '1/4';
       strongMinionCR = '1';
       largeCreatureCR = '3';
@@ -54,64 +79,75 @@ export function dungeonOverviewPrompt(
   }
 
   return `
-  ${initialSentence}. When describing events and individuals be specific about names and locations. Try to use creative and unique names and titles which borrow from more than one literary tradition and ethnicity. Each key should be a sentence or two, should be detailed and specific and should flow together to create a cohesive description. Avoid common fantasy tropes and cliches. Temperature: 0.9
+  ${initialSentence}. When describing events and individuals be specific about names and locations. Try to use creative and unique names and titles which borrow from more than one literary tradition and ethnicity. Each key should be a sentence or two, should be detailed and specific, and should flow together to create a cohesive description. Avoid common fantasy tropes and clichés. Temperature: 0.9
 
   ${place_lore ? `Additional details about the setting: ${place_lore}.` : ''}
 
   ${difficulty ? `The dungeon difficulty is "${difficulty}".` : ''}
   ${difficulty ? difficultyPrompts[difficulty] : ''}
 
-  The dungeon should have three types of monsters:
-  1. **Minions**: These are low-level creatures that serve as the basic underlings for the dominant power. CR ~ ${minionCR}. Describe what they are and how they serve the dominant entity. If you wish, include details about their boons or special weapons.
-  2. **Lieutenant**: A more powerful creature aligned (or once aligned) with the dominant power. This creature should be of the same general type as the minions, but stronger or more capable. CR ~ ${strongMinionCR}.
-  3. **Miniboss**: A significant foe who may or may not be directly loyal to the dominant power, possibly seeking their own agenda. CR ~ ${largeCreatureCR}. After describing the minions, add a paragraph (miniboss paragraph) describing this creature’s role and how it differs from the minions and lieutenant. This miniboss should have some unique twist, such as a wizard who hopes to bargain with the dominant entity rather than serving it directly.
+  IMPORTANT:
+  - We want exactly 3 monsters in the \`monsters\` array:
+    1) A basic minion (type: "minion", CR ~ ${minionCR})
+    2) A stronger lieutenant minion (type: "strong_minion", CR ~ ${strongMinionCR})
+    3) A large creature (type: "large_creature", CR ~ ${largeCreatureCR})
+  - There should be at least 3 NPCs in \`npc_list\`:
+    1) The “miniboss” (but do not call it that; it is an NPC with a name and personal motivations, described in \`miniboss_description\`).
+    2) The “boss” (the dominant power).
+    3) At least one other named NPC.
+  - If the “boss” is an intelligent named entity (like a lich, vampire lord, cunning dragon), include it in the \`npc_list\` under a unique name and note that it is the dominant power. If the boss is a truly mindless or bestial creature (like a random giant worm), include it in the \`monsters\` array.
+  - The \`npc_list\` can include more than 3 NPCs, but must include at least 3.
+  - The “miniboss_description” field describes the named mid-tier antagonist, which MUST be an NPC in \`npc_list\`. The large creature is a separate entity in \`monsters\`, with no overlapping name.
+  - No monster in \`monsters\` shares a name with any NPC.
+  - Keep the final output in valid JSON with the keys below.
 
-  Return the description in JSON format with the following keys. Make sure the npc_list includes all npc names mentioned in the description. The NPCs in npc_list should only be individuals and NOT organizations or groups. If a group or faction is mentioned, come up with the name of an individual within that group. NPCs are not necessarily human. They could be monsters that have intelligence, a personality and a name. Avoid the banned NPC names. Keep descriptions concise, avoid run-on sentences:
+  Return the description in JSON format with the following keys. Make sure the npc_list includes all npc names mentioned in the description. The NPCs in npc_list should only be individuals (not organizations or groups). If a group or faction is mentioned, come up with the name of an individual in that group. NPCs are not necessarily human; they could be intelligent monsters that have a personality and a name. Avoid banned NPC names. Keep descriptions concise and avoid run-on sentences:
+
   {
     name: '${place_name}',
     overview: 'A brief overview of the dungeon, with a brief description of its current state',
-    relation_to_larger_setting: 'How does the dungeon relate to the larger setting? What role does it play in the larger setting? How is it situated geographically in relation to the larger setting? Provide a name for the larger setting if possible',
-    finding_the_dungeon: 'How is the dungeon accessed? Is it deep inside dangerous geographical features, hidden in plain sight, or accessible only through a portal or ritual? What are the dangers and obstacles that must be overcome to reach the dungeon?',
-    history: 'A very brief history of the dungeon, including its founding/creation and most significant recent events',
-    title: 'A descriptive title like: The Haunted Ruins of Blackwood. The title MUST include the setting name',
-    dominant_power: 'What entity has dominant power over this dungeon? This entity could be monstrous, fae, demonic, undead, angelic, abyssal, a mindless but powerful beast, etc. Be creative, unique, and specific and match the entity or group to the setting',
-    dominant_power_goals: 'What are the goals of the dominant entity? This could be as simple as protecting its habitat or as complex as a ritual to summon a dark god. How do these goals affect the dungeon and its inhabitants?',
-    dominant_power_minions: 'What minions or followers does the dominant entity or group have? What are their goals and motivations? How do they serve the dominant entity or group and how were they recruited? If the dominant power has no minions, how do they maintain their power in this place?',
-    dominant_power_event: 'describe the most important recent event involving the dominant power. This could be an ancient event or a recent event',
-    miniboss_description: 'DON'T SAY THE WORD MINIBOSS, SHOW DON'T TELL. The miniboss could be aligned with the dominant power or seeking their own agenda. Describe the miniboss and their role in the dungeon. They are most likely antagonistic to the PCs, however. They should either be an ally to the dominant power or are neutral. If they are allied how did they come to be so? If they are neutral, what is their agenda and how do they interact with the dominant power?',
-    recent_event_consequences: 'describe the consequences of the recent event involving the dominant power. How has this event affected the dungeon and its inhabitants?',
-    secondary_power: 'The secondary entity or group that has power in the dungeon. This could be a turncoat willing to betray the dominant entity or group, a rival faction, a group of adventurers, or perhaps the original inhabitants of the dungeon. Be creative, unique, and specific and match the entity or group to the setting. Are they allies, enemies, or neutral to the dominant entity or group? Could they be potential allies or enemies to the PCs?',
-    secondary_power_event: 'describe the most important recent event involving the secondary entity or group that has change the power dynamics of the dungeon. This could be an ancient event or a recent event.',
-    main_problem: 'Describe a recent scene which illustrates the main problem that ${place_name} faces. How does this scene illustrate the main problem? What would happen if this problem is not resolved?',
-    potential_solutions: '1-2 sentences describing potential solutions to the main problem. Who are the key players championing these solutions and what obstacles are they facing?',
-    conclusion: 'A brief conclusion summarizing the current state of ${place_name} and hinting at its future. This should tie back to the main problem and potential solutions',
+    relation_to_larger_setting: 'How does the dungeon relate to the larger setting? What role does it play? How is it situated geographically in relation to the larger world? Provide a name for the larger region if possible',
+    finding_the_dungeon: 'How is the dungeon accessed or reached? What are the unique or dangerous geographical features or magical means? What obstacles must be overcome?',
+    history: 'A very brief history of the dungeon, including its founding/creation and any most significant recent events',
+    title: 'A descriptive title like: The Haunted Ruins of Blackwood. MUST include the setting name',
+    dominant_power: 'What entity has dominant power here? Be creative and match it to the setting (monstrous, fae, demonic, undead, etc.). This description should flow into the next sentence about their goals',
+    dominant_power_goals: 'What are the goals or motivations of this dominant entity? Protecting territory? Summoning a dark god? Something else?',
+    dominant_power_minions: 'What creatures or followers serve this entity? What are their motivations? If none, how does it maintain power alone?',
+    dominant_power_event: 'The most important recent event (could be ancient or recent) involving the dominant power',
+    miniboss_description: 'DO NOT say “miniboss.” This is a mid-tier antagonist that might serve or oppose the dominant power. Show us their motives and how they interact with the main entity',
+    recent_event_consequences: 'How has the most important recent event affected the dungeon and its inhabitants?',
+    secondary_power: 'Another faction or individual who also wields influence here. Could they be allies, rivals, or neutral? Potential friends or enemies for the PCs?',
+    secondary_power_event: 'A recent or ancient event involving the secondary power that changed the dungeon's dynamics',
+    main_problem: 'Paint a short scene illustrating the main conflict ${place_name} faces. What happens if it's not resolved?',
+    potential_solutions: '1-2 sentences on possible resolutions to the main problem. Who's championing them, and what obstacles stand in their way?',
+    conclusion: 'Wrap up how things stand in ${place_name} now, and hint at the future. Tie it back to the main problem and solutions',
     difficulty_level: 'This is a ${
-      difficulty ? difficulty : 'Tier 1/Tier 2/Tier 3/Tier 4/ Tier 5 difficulty'
-    } dungeon. Describe the difficulty level and challenges.',
+      difficulty ? difficulty : 'Tier 1/Tier 2/Tier 3/Tier 4/Tier 5 difficulty'
+    } dungeon. Describe the difficulty and challenges in a short note',
     monsters: [
       {
         type: "minion",
         name: "Minion Name",
-        description: "A brief description of the minions and their role",
+        description: "A brief description of the minion’s role",
         CR: "${minionCR}"
       },
       {
         type: "strong_minion",
-        name: "Strong Minion Name",
-        description: "A brief description of the strong minions and how they differ from the regular minions",
+        name: "Stronger Minion Name",
+        description: "How do these differ from the regular minions?",
         CR: "${strongMinionCR}"
       },
       {
         type: "large_creature",
         name: "Large Creature Name",
-        description: "A brief description of the large creature and how it differs from the minions and lieutenant. This is not the miniboss.",
+        description: "Big monstrous entity separate from any NPC. Mindless or bestial if the boss is not, or used in a unique way",
         CR: "${largeCreatureCR}"
       }
     ],
     npc_list: [
       {
         name: 'NPC Name (INDIVIDUALS ONLY)',
-        description: 'A brief description of the NPC's role and personality'
+        description: 'A short note on the NPC’s role and personality'
       }
     ]
   }`;
@@ -120,7 +156,6 @@ export function dungeonOverviewPrompt(
 export function validateDungeonOverview(jsonString) {
   try {
     const data = JSON.parse(jsonString);
-    // Check for required keys
     const requiredKeys = [
       'name',
       'overview',
@@ -143,13 +178,11 @@ export function validateDungeonOverview(jsonString) {
       'npc_list',
       'monsters',
     ];
-
     for (const key of requiredKeys) {
       if (!(key in data)) {
         return false;
       }
     }
-
     return true;
   } catch (e) {
     return false;

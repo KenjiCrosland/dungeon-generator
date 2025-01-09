@@ -129,20 +129,22 @@ export async function generateDungeonOverview() {
       roomDescriptions: null,
       roomNames: [],
       npcs: [],
-      statblocks: [],
+      monsters: [],
     };
-
-    if (overview.monsters && Array.isArray(overview.monsters)) {
-      overview.monsters.forEach((monster, index) => {
-        monster.id = `${newDungeon.id}-monster-${Date.now()}-${index}`;
-      });
-    }
 
     if (overview.npc_list) {
       newDungeon.npcs = overview.npc_list.map((npc) => ({
         name: npc.name,
         short_description: npc.description,
         opened: false,
+      }));
+    }
+
+    if (overview.monsters && Array.isArray(overview.monsters)) {
+      newDungeon.monsters = overview.monsters.map((monster, index) => ({
+        ...monster,
+        id: `${newDungeon.id}-monster-${Date.now()}-${index}`,
+        statblock: undefined, // We'll fill this later
       }));
     }
 

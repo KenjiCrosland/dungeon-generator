@@ -21,13 +21,22 @@ import {
   currentDungeonOverviewString,
 } from './overview-store.mjs';
 import { generateMap, handleUpdateRoomDescription } from './map-store.mjs';
-import { generateDungeonNPC, deleteNPC, addNPC } from './npc-store.mjs';
 import {
+  generateDungeonNPC,
+  deleteNPC,
+  addNPC,
+  npcStatblockLoadingStates,
+  generateNPCStatblock,
+} from './npc-store.mjs';
+import {
+  createAndGenerateMonster,
   generateMonsterStatblock,
   generateAndSaveStatblock,
   updateStatblock,
   generateMonsterDescription,
-} from './statblock-store.mjs';
+  generateDescriptionAndStatblock,
+  deleteMonster,
+} from './monster-store.mjs';
 
 export const useDungeonStore = defineStore('dungeon', () => {
   function selectDungeon(dungeonId) {
@@ -93,11 +102,16 @@ export const useDungeonStore = defineStore('dungeon', () => {
     generateDungeonNPC,
     deleteNPC,
     addNPC,
+    generateNPCStatblock,
+    npcStatblockLoadingStates,
     generateMap,
     handleUpdateRoomDescription,
+    createAndGenerateMonster,
     generateAndSaveStatblock,
     generateMonsterStatblock,
     generateMonsterDescription,
+    generateDescriptionAndStatblock,
+    deleteMonster,
     updateStatblock,
   };
 });

@@ -16,6 +16,6 @@ export function loadDungeons(currentDungeonId) {
 
 export function findMonsterById(currentDungeon, monsterId) {
   if (!currentDungeon.value) return null;
-  const monsters = currentDungeon.value.dungeonOverview.monsters || [];
+  const monsters = currentDungeon.value.monsters || [];
   return monsters.find((m) => m.id === monsterId);
 }

@@ -6,10 +6,11 @@ export function monsterDescriptionPrompt(overview, monster) {
 
   Monster Short Description: ${monster.description}
 
-  Monster Name: ${monster.name}
+  Monster Name: ${monster.name ? monster.name : 'Generate an appropriate name'}
 
   Return the monster description in JSON format with the following keys. Limit each section to 1-2 sentences:
   {
+    "name": "${monster.name}",
     "intro": "A brief introduction describing the monster's role and significance in the dungeon or setting. This should set the tone for what kind of creature it is and how it fits into the dungeon.",
     "appearance": "A detailed visual description of the monster, highlighting its unique physical features and emphasizing creativity and uniqueness.",
     "behaviorAbilities": "A concise section detailing the monster's behaviors, combat abilities, and notable traits. Include how it interacts with the dungeon's environment and its role in the ecosystem.",

@@ -11,7 +11,120 @@ import {
   validateDungeonNPCResponse,
   validateDungeonNPCRelationshipsResponse,
 } from '../prompts/dungeon-npcs.mjs';
+import { canGenerateStatblock } from '../util/can-generate-statblock.mjs';
 import { generateGptResponse } from '../util/open-ai.mjs';
+import { createStatblockPrompts } from '../prompts/monster-prompts.mjs';
+import { ref } from 'vue';
+
+// We can store loading states for NPC statblock generation:
+export const npcStatblockLoadingStates = ref({});
+
+function sbValidationPart1(jsonString) {
+  try {
+    const data = JSON.parse(jsonString);
+    const keys = [
+      'armor_class',
+      'hit_points',
+      'speed',
+      'senses',
+      'languages',
+      'challenge_rating',
+      'proficiency_bonus',
+      'abilities',
+    ];
+    return keys.every((k) => k in data);
+  } catch {
+    return false;
+  }
+}
+
+function sbValidationPart2(jsonString) {
+  try {
+    const data = JSON.parse(jsonString);
+    return 'actions' in data;
+  } catch {
+    return false;
+  }
+}
+
+// Example function:
+export async function generateNPCStatblock(
+  index,
+  { CR, monsterType, isSpellcaster, premium },
+) {
+  if (!currentDungeon.value) return;
+  const npc = currentDungeon.value.npcs[index];
+  if (!npc) {
+    console.error('NPC not found at index', index);
+    return;
+  }
+
+  // Quick check for premium usage:
+  const canGen = await canGenerateStatblock(premium);
+  if (!canGen) return;
+
+  npcStatblockLoadingStates.value[index] = {
+    part1: true,
+    part2: true,
+    generating: true,
+  };
+
+  try {
+    // Build up the "description" from the NPC data
+    const npcBodyString = buildNPCString(npc); // Something like "This NPC named X is..."
+    // Possibly also add the shortDescription or read_aloud_description if you want more detail
+
+    const promptOptions = {
+      monsterName: npc.name,
+      challengeRating: CR || '1',
+      monsterType: monsterType || 'Random',
+      monsterDescription: npcBodyString || 'A mysterious being',
+      caster: !!isSpellcaster,
+    };
+
+    const statblockPrompts = createStatblockPrompts(promptOptions);
+
+    // PART 1
+    const npcStatsPart1 = await generateGptResponse(
+      statblockPrompts.part1,
+      sbValidationPart1,
+      3,
+    );
+    const part1Data = JSON.parse(npcStatsPart1);
+    npc.statblock = { id: npc.name, ...part1Data }; // Just some ID, or use crypto.randomUUID()
+
+    // PART 2
+    // Provide GPT the context of part1
+    const previousContext = [
+      {
+        role: 'user',
+        content: 'Please give me the first part of the D&D statblock',
+      },
+      { role: 'system', content: npcStatsPart1 },
+    ];
+
+    const npcStatsPart2 = await generateGptResponse(
+      statblockPrompts.part2,
+      sbValidationPart2,
+      3,
+      previousContext,
+    );
+    const part2Data = JSON.parse(npcStatsPart2);
+
+    // Combine for final
+    npc.statblock = { ...npc.statblock, ...part2Data };
+    saveDungeons();
+  } catch (error) {
+    console.error('Error generating NPC statblock:', error);
+  } finally {
+    npcStatblockLoadingStates.value[index] = {
+      part1: false,
+      part2: false,
+      generating: false,
+    };
+    saveDungeons();
+  }
+}
 
 function getDungeonOverviewText(overviewObject) {
   if (!overviewObject) return '';

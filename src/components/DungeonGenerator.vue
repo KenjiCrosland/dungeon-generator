@@ -111,11 +111,11 @@
           </TabPanel>
 
           <TabPanel label="NPCs">
-            <NPCsTab />
+            <NPCsTab :premium="premium" />
           </TabPanel>
 
-          <TabPanel label="Statblocks">
-            <StatblocksTab :premium="premium" />
+          <TabPanel label="Monsters">
+            <MonstersTab :premium="premium" />
           </TabPanel>
         </Tabs>
       </div>
@@ -135,7 +135,7 @@ import TabPanel from '@/components/tabs/TabPanel.vue';
 import OverviewTab from '@/components/OverviewTab.vue';
 import MapTab from '@/components/MapTab.vue';
 import NPCsTab from '@/components/NPCsTab.vue';
-import StatblocksTab from '@/components/StatblocksTab.vue';
+import MonstersTab from '@/components/MonstersTab.vue';
 
 import { dungeonToMarkdown } from '@/util/dungeon-to-markdown.mjs';
 import { dungeonToHTML } from '@/util/dungeon-to-html.mjs';
