@@ -37,7 +37,7 @@ export function createStatblockPrompts(options) {
     'Stronger Offense': 'offensive',
   };
   monsterType = monsterTypeDictionary[monsterType];
-  console.log('Monster Type:', monsterType);
+  //console.log('Monster Type:', monsterType);
   let templateArray = creatureTemplates[challengeRating];
   let template;
   if (monsterType !== 'random') {
@@ -48,7 +48,7 @@ export function createStatblockPrompts(options) {
   if (templateArray.length === 0) {
     templateArray = creatureTemplates[challengeRating];
   }
-  //console.log(templateArray);
+  ////console.log(templateArray);
   template = templateArray[Math.floor(Math.random() * templateArray.length)];
   let challengeRatingObj = challengeRatingObjects[challengeRating];
 
@@ -112,9 +112,9 @@ export function createStatblockPrompts(options) {
     });
     legendaryResistancePrompt = `Be sure to include legendary resistances in the abilities array for this creature.`;
   }
-  console.log(parseInt(challengeRating));
+  //console.log(parseInt(challengeRating));
   if (template.actions.length <= 3 && parseInt(challengeRating) > 1) {
-    console.log('In another action');
+    //console.log('In another action');
     template.actions.push({
       name: 'Another Action',
       description:
@@ -157,9 +157,9 @@ export function createStatblockPrompts(options) {
     else if (challengeRating <= 10) level = 'mid';
     else if (challengeRating <= 25) level = 'high';
     else level = 'epic';
-    console.log('Level:', level);
+    //console.log('Level:', level);
     const baseLimit = baseThresholds[level];
-    console.log('Template Type:', template.type);
+    //console.log('Template Type:', template.type);
     const adjustment =
       typeAdjustments[template.type] || typeAdjustments['balanced'];
 

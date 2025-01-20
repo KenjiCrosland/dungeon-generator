@@ -21,7 +21,7 @@ export async function generateStatblockPart1({
   const monsterPrompts = createStatblockPrompts(promptOptions);
 
   try {
-    console.log(monsterPrompts.part1);
+    //console.log(monsterPrompts.part1);
     const monsterStatsPart1 = await generateGptResponse(
       monsterPrompts.part1,
       validationPart1,
@@ -49,7 +49,7 @@ export async function completeStatblock(monsterStatsPart1, monsterPrompts) {
   ];
 
   try {
-    console.log(monsterPrompts.part2);
+    //console.log(monsterPrompts.part2);
     const monsterStatsPart2 = await generateGptResponse(
       monsterPrompts.part2,
       validationPart2,

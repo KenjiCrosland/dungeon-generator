@@ -1,17 +1,17 @@
-import { detectIncognito } from 'detectincognitojs';
+//import { detectIncognito } from 'detectincognitojs';
 
 export async function canGenerateStatblock(isPremium) {
   if (isPremium) {
     return true;
   }
-  const incognitoResult = await detectIncognito();
+  // const incognitoResult = await detectIncognito();
 
-  if (incognitoResult.isPrivate) {
-    alert(
-      "The free statblock generator is not available in incognito or private mode as we can't keep track of the number of statblocks generated. Please disable incognito mode to use the generator or you can access unlimited statblock generation as a $5 patron.",
-    );
-    return false;
-  }
+  // if (incognitoResult.isPrivate) {
+  //   alert(
+  //     "The free statblock generator is not available in incognito or private mode as we can't keep track of the number of statblocks generated. Please disable incognito mode to use the generator or you can access unlimited statblock generation as a $5 patron.",
+  //   );
+  //   return false;
+  // }
   const MAX_GENERATIONS = 5;
   const storage = window.localStorage;
   const monsters = JSON.parse(storage.getItem('monsters')) || {

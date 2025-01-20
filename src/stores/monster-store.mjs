@@ -8,6 +8,7 @@ import {
   monsterDescriptionPrompt,
   validateMonsterDescription,
 } from '../prompts/monster-description.mjs';
+import { generateStatblockForCreature } from '../util/statblock-generator.mjs';
 
 function sbValidationPart1(jsonString) {
   try {
@@ -231,9 +232,6 @@ export async function generateAndSaveStatblock({
   }
 
   try {
-    const { generateStatblockForCreature } = await import(
-      '../util/statblock-generator.mjs'
-    );
     const statblock = await generateStatblockForCreature({
       name,
       CR,

@@ -52,10 +52,18 @@
     <!-- Main Content -->
     <div class="main-content">
       <div v-if="!dungeonStore.currentDungeon && !dungeonStore.loadingOverview" class="content-container content-form">
-        <h1>Kenji's Dungeon Generator 2.0</h1>
+        <h1 v-if="!premium">Kenji's Dungeon Generator 2.0 -- Free Version</h1>
+        <h1 v-if="premium">Kenji's Dungeon Generator 2.0 -- Premium Version</h1>
         <p>
           Welcome to the Dungeon Generator! Use the form below to create a dungeon overview, generate a map, and add
-          NPCs. You can copy dungeon info in various formats.
+          NPCs and Monsters with Full Statblocks. You can copy dungeon info in various formats.
+        </p>
+        <p v-if="!premium">
+          This free version has a
+          limited number of statblocks you
+          can
+          generate. The premium version can be found here: <cdr-link
+            href="https://cros.land/dungeon-generator-2-0-premium-version/">https://cros.land/dungeon-generator-2-0-premium-version/</cdr-link>.
         </p>
         <h3>Create Dungeon Overview</h3>
         <form @submit.prevent="dungeonStore.generateDungeonOverview">
@@ -177,16 +185,19 @@ const difficultyOptions = [
 function copyDungeonasMarkdown() {
   const markdown = dungeonToMarkdown(dungeonStore.currentDungeon);
   navigator.clipboard.writeText(markdown);
+  alert('Content copied as markdown!');
 }
 
 function copyDungeonasHTML() {
   const html = dungeonToHTML(dungeonStore.currentDungeon);
   navigator.clipboard.writeText(html);
+  alert('Content copied as HTML!');
 }
 
 function copyDungeonasPlainText() {
   const plainText = dungeonToPlainText(dungeonStore.currentDungeon);
   navigator.clipboard.writeText(plainText);
+  alert('Content copied as plain text!');
 }
 
 function deleteAllDungeons() {
@@ -215,6 +226,7 @@ onMounted(() => {
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
 
 .app-container {
+  position: relative;
   display: flex;
 }
 
