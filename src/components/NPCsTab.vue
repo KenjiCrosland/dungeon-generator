@@ -123,7 +123,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onBeforeMount } from 'vue';
+import { ref, reactive, onBeforeMount, watch } from 'vue';
 import { useDungeonStore } from '@/stores/dungeon-store.mjs';
 import NPCSkeleton from '@/components/skeletons/NPCSkeleton.vue';
 import Statblock from '@/components/statblock/Statblock.vue';
@@ -159,7 +159,7 @@ function ensureNpcStatblockData() {
   dungeonStore.currentDungeon.npcs.forEach((npc, idx) => {
     if (!npcStatblockData[idx]) {
       npcStatblockData[idx] = {
-        CR: getCR(npc.CR || '1'), // Use getCR to extract the number
+        CR: getCR(npc?.CR || '1'), // Use getCR to extract the number
         monsterType: 'Random',
         isSpellcaster: npc.isSpellcaster || false,
       };
@@ -176,6 +176,14 @@ function getCR(cr) {
 onBeforeMount(() => {
   ensureNpcStatblockData();
 });
+
+watch(
+  () => dungeonStore.currentDungeon?.npcs,
+  () => {
+    ensureNpcStatblockData();
+  },
+  { deep: true }
+);
 
 // Whenever the NPC list changes, make sure our form data is in sync
 //ensureNpcStatblockData();

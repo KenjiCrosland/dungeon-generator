@@ -38,6 +38,9 @@
         <cdr-button @click="copyDungeonasPlainText" modifier="secondary">Copy As Plain Text</cdr-button>
         <cdr-button @click="copyDungeonasHTML" modifier="secondary">Copy As HTML</cdr-button>
         <cdr-button @click="copyDungeonasMarkdown" modifier="secondary">Copy As Homebrewery Markdown</cdr-button>
+        <cdr-button modifier="dark" @click="showDataManagerModal = true">
+          Save/Load Data from a File
+        </cdr-button>
         <p>
           Use the above buttons to copy all setting info into your desired format.
           For homebrewery go
@@ -47,6 +50,8 @@
 
         <cdr-button @click="deleteAllDungeons">Delete All Dungeons</cdr-button>
       </div>
+      <DataManagerModal :opened="showDataManagerModal" @update:opened="showDataManagerModal = $event" :premium="premium"
+        currentApp="dungeons" />
     </div>
 
     <!-- Main Content -->
@@ -138,6 +143,7 @@ import { useDungeonStore } from '@/stores/dungeon-store.mjs';
 import { CdrButton, CdrLink, CdrInput, CdrSelect, IconNavigationMenu } from '@rei/cedar';
 import Tabs from '@/components/tabs/Tabs.vue';
 import TabPanel from '@/components/tabs/TabPanel.vue';
+import DataManagerModal from '@/components/DataManagerModal.vue';
 
 // The tabs as separate components
 import OverviewTab from '@/components/OverviewTab.vue';
@@ -173,6 +179,7 @@ const sidebarStyle = computed(() => {
     };
   }
 });
+const showDataManagerModal = ref(false);
 
 const difficultyOptions = [
   'Tier 1: Basic - A local hero in the making.',
