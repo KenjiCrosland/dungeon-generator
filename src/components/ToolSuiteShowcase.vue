@@ -169,7 +169,7 @@ const setMobile = () => (isMobile.value = mq ? mq.matches : false);
 const tools = [
   // Free
   { name: 'Monster Statblock Generator', shortName: 'Monsters', description: 'Create balanced D&D 5e monster statblocks', url: 'https://cros.land/ai-powered-dnd-5e-monster-statblock-generator/', icon: 'pest_control', premium: false, category: 'combat' },
-  { name: 'Dungeon Generator 2.0', shortName: 'Dungeons', description: 'Generate complete dungeons with rooms, encounters, and boss battles', url: 'https://cros.land/kenjis-dungeon-generator-2-0/', icon: 'map', premium: false, category: 'exploration' },
+  { name: 'Dungeon Generator', shortName: 'Dungeons', description: 'Generate complete dungeons with rooms, encounters, and boss battles', url: 'https://cros.land/kenjis-dungeon-generator-2-0/', icon: 'map', premium: false, category: 'exploration' },
   { name: 'Magic Item Generator', shortName: 'Items', description: 'Create unique magic items with lore and balanced mechanics.', url: 'https://cros.land/dnd-5e-magic-item-generator/', icon: 'auto_fix_high', premium: false, category: 'items' },
   { name: 'Encounter Generator', shortName: 'Encounters', description: 'Build balanced combat encounters for any party composition', url: 'https://cros.land/dnd-5e-encounter-generator/', icon: 'sports_kabaddi', premium: false, category: 'combat' },
   { name: 'Setting Generator', shortName: 'Settings', description: 'World-building tool for creating rich campaign settings.', url: 'https://cros.land/rpg-setting-generator-and-world-building-tool/', icon: 'public', premium: false, category: 'worldbuilding' },

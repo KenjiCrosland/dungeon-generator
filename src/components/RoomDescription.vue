@@ -38,26 +38,61 @@
       <RoomSkeleton />
     </div>
     <div v-if="activeView === 'description'">
-      <div v-for="(item, index) in contentArray" :key="index">
-        <template v-if="item.format === 'read_aloud'">
-          <!-- Render read-aloud text in a box with italicized content -->
-          <div class="read-aloud-box">
-            <p><em>{{ item.content }}</em></p>
-          </div>
-        </template>
-        <template v-else-if="item.format === 'header'">
-          <!-- Render header -->
-          <h3>{{ item.content }}</h3>
-        </template>
-        <template v-else-if="item.format === 'paragraph'">
-          <!-- Render paragraph -->
-          <p>{{ item.content }}</p>
-        </template>
+      <!-- View Mode -->
+      <div v-if="!isEditingRoom">
+        <div v-for="(item, index) in contentArray" :key="index">
+          <template v-if="item.format === 'read_aloud'">
+            <!-- Render read-aloud text in a box with italicized content -->
+            <div class="read-aloud-box">
+              <p><em>{{ item.content }}</em></p>
+            </div>
+          </template>
+          <template v-else-if="item.format === 'header'">
+            <!-- Render header -->
+            <h3>{{ item.content }}</h3>
+          </template>
+          <template v-else-if="item.format === 'paragraph'">
+            <!-- Render paragraph -->
+            <p>{{ item.content }}</p>
+          </template>
+        </div>
+        <div class="generation-button">
+          <cdr-button size="small" @click="generateDescription" modifier="dark">
+            Re-Generate Description
+          </cdr-button>
+          <cdr-button size="small" @click="startEditingRoom" modifier="secondary">
+            Edit Room
+          </cdr-button>
+        </div>
       </div>
-      <div class="generation-button">
-        <cdr-button size="small" @click="generateDescription" modifier="dark">
-          Re-Generate Description
-        </cdr-button>
+
+      <!-- Edit Mode -->
+      <div v-else class="edit-form">
+        <h3>Edit Room Description</h3>
+
+        <cdr-input v-model="roomEditForm.name" label="Room Name" background="secondary" class="edit-field">
+          <template #helper-text-bottom>
+            The name of the room (without the room number)
+          </template>
+        </cdr-input>
+
+        <cdr-input v-model="roomEditForm.content" label="Room Content (Markup Format)" background="secondary" :rows="20"
+          tag="textarea" class="edit-field">
+          <template #helper-text-bottom>
+            <div class="markup-help">
+              <strong>Markup Format Guide:</strong><br>
+              • Use <code>[READ_ALOUD]...[/READ_ALOUD]</code> for read-aloud text boxes<br>
+              • Use <code>## Header Text</code> for section headers<br>
+              • Leave blank lines between paragraphs<br>
+              • Multiple [READ_ALOUD] blocks are supported (e.g., for entrance/completion descriptions)
+            </div>
+          </template>
+        </cdr-input>
+
+        <div class="button-group">
+          <cdr-button size="small" @click="saveEditRoom">Save Changes</cdr-button>
+          <cdr-button size="small" @click="cancelEditRoom" modifier="secondary">Cancel</cdr-button>
+        </div>
       </div>
     </div>
     <div v-if="!dungeonStore.isMapSidebarCollapsed && room && room.doorways && room.doorways.length">
@@ -98,6 +133,13 @@ const room = ref(null);
 const activeView = ref('description');
 
 const initialRoomType = room.value?.roomType || null;
+
+// Edit mode state
+const isEditingRoom = ref(false);
+const roomEditForm = ref({
+  name: '',
+  content: ''
+});
 
 const setbackRoom = computed({
   get() {
@@ -239,6 +281,163 @@ async function generateDescription() {
   loadRoomData(dungeonStore.selectedRoomId);
 }
 
+// Convert contentArray to markup format
+function contentArrayToMarkup(contentArr) {
+  if (!contentArr || contentArr.length === 0) {
+    return '';
+  }
+
+  const parts = [];
+
+  contentArr.forEach(item => {
+    if (item.format === 'read_aloud') {
+      parts.push(`[READ_ALOUD]\n${item.content}\n[/READ_ALOUD]`);
+    } else if (item.format === 'header') {
+      parts.push(`## ${item.content}`);
+    } else if (item.format === 'paragraph') {
+      parts.push(item.content);
+    }
+  });
+
+  return parts.join('\n\n');
+}
+
+// Convert markup format to contentArray
+function markupToContentArray(markup) {
+  if (!markup || !markup.trim()) {
+    return [];
+  }
+
+  const contentArray = [];
+  const lines = markup.split('\n');
+  let inReadAloud = false;
+  let readAloudContent = [];
+  let currentParagraph = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    // Check for read-aloud block start
+    if (trimmed === '[READ_ALOUD]') {
+      // Save any accumulated paragraph first
+      if (currentParagraph.length > 0) {
+        contentArray.push({
+          format: 'paragraph',
+          content: currentParagraph.join(' ').trim()
+        });
+        currentParagraph = [];
+      }
+      inReadAloud = true;
+      readAloudContent = [];
+      continue;
+    }
+
+    // Check for read-aloud block end
+    if (trimmed === '[/READ_ALOUD]') {
+      if (inReadAloud && readAloudContent.length > 0) {
+        contentArray.push({
+          format: 'read_aloud',
+          content: readAloudContent.join(' ').trim()
+        });
+      }
+      inReadAloud = false;
+      readAloudContent = [];
+      continue;
+    }
+
+    // If we're in a read-aloud block
+    if (inReadAloud) {
+      if (trimmed) {
+        readAloudContent.push(trimmed);
+      }
+      continue;
+    }
+
+    // Check for headers (##)
+    if (trimmed.startsWith('## ')) {
+      // Save any accumulated paragraph first
+      if (currentParagraph.length > 0) {
+        contentArray.push({
+          format: 'paragraph',
+          content: currentParagraph.join(' ').trim()
+        });
+        currentParagraph = [];
+      }
+      // Add header
+      contentArray.push({
+        format: 'header',
+        content: trimmed.substring(3).trim()
+      });
+      continue;
+    }
+
+    // Handle regular content
+    if (trimmed === '') {
+      // Empty line indicates paragraph break
+      if (currentParagraph.length > 0) {
+        contentArray.push({
+          format: 'paragraph',
+          content: currentParagraph.join(' ').trim()
+        });
+        currentParagraph = [];
+      }
+    } else {
+      // Add to current paragraph
+      currentParagraph.push(trimmed);
+    }
+  }
+
+  // Add any remaining paragraph
+  if (currentParagraph.length > 0) {
+    contentArray.push({
+      format: 'paragraph',
+      content: currentParagraph.join(' ').trim()
+    });
+  }
+
+  return contentArray;
+}
+
+// Start editing room
+function startEditingRoom() {
+  if (!room.value) return;
+
+  roomEditForm.value = {
+    name: room.value.name || '',
+    content: contentArrayToMarkup(contentArray.value)
+  };
+
+  isEditingRoom.value = true;
+}
+
+// Cancel editing room
+function cancelEditRoom() {
+  isEditingRoom.value = false;
+}
+
+// Save edited room
+function saveEditRoom() {
+  if (!room.value) return;
+
+  // Update room name
+  room.value.name = roomEditForm.value.name;
+
+  // Update contentArray from markup
+  room.value.contentArray = markupToContentArray(roomEditForm.value.content);
+
+  // Update the local contentArray ref
+  contentArray.value = room.value.contentArray;
+
+  // Update room name display
+  roomName.value = `${room.value.id}. ${room.value.name || `Room ${room.value.id}`}`;
+
+  // Save to localStorage
+  dungeonStore.saveDungeons();
+
+  isEditingRoom.value = false;
+}
+
 onMounted(() => {
   if (!dungeonStore.currentDungeon || !dungeonStore.currentDungeon.rooms || dungeonStore.currentDungeon.rooms.length === 0) {
     return;
@@ -276,7 +475,9 @@ onMounted(() => {
 
 .generation-button {
   margin-top: 1rem;
-  text-align: center;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
 }
 
 .connecting-room-list {
@@ -299,5 +500,34 @@ onMounted(() => {
   background-color: #f3f3e8;
   border-radius: 4px;
   padding: 1rem;
+}
+
+.edit-form {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+.edit-field {
+  margin-bottom: 1.5rem;
+}
+
+.button-group {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.markup-help {
+  font-size: 0.9em;
+  line-height: 1.6;
+}
+
+.markup-help code {
+  background-color: #e8e8e8;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 0.95em;
 }
 </style>

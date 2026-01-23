@@ -16,6 +16,7 @@ npc-generator.txt
 .env
 .env.local
 launch.json
+CLAUDE.md
 
 # Editor directories and files
 .vscode/*
