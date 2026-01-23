@@ -29,34 +29,109 @@
 
           <!-- NPC Details -->
           <div v-else>
-            <h2>{{ npc.name }}</h2>
+            <!-- View Mode -->
+            <div v-if="editingNPCIndex !== index">
+              <h2>{{ npc.name }}</h2>
 
-            <!-- Full generated details if we have them -->
-            <div v-if="npc.description_of_position">
-              <div class="read-aloud-box">
-                <p>{{ npc.read_aloud_description }}</p>
+              <!-- Full generated details if we have them -->
+              <div v-if="npc.description_of_position || npc.combined_details">
+                <div class="read-aloud-box">
+                  <p>{{ npc.read_aloud_description }}</p>
+                </div>
+
+                <!-- Use combined_details if available, otherwise show individual fields -->
+                <div v-if="npc.combined_details" style="margin-top: 1.5rem;">
+                  <p v-for="(paragraph, pIndex) in npc.combined_details.split('\n\n')" :key="pIndex">
+                    {{ paragraph }}
+                  </p>
+                </div>
+                <div v-else>
+                  <p>{{ npc.description_of_position }}</p>
+                  <p>{{ npc.why_in_dungeon }}</p>
+                  <p>{{ npc.distinctive_features_or_mannerisms }}</p>
+                  <p>{{ npc.character_secret }}</p>
+                  <p>{{ npc.roleplaying_tips }}</p>
+                </div>
+
+                <h3>Relationships</h3>
+                <div v-if="npc.relationships && Object.keys(npc.relationships).length > 0">
+                  <div v-for="(relationship, relatedNpcName) in npc.relationships" :key="relatedNpcName"
+                    style="margin-bottom: 1rem; padding: 1rem; background: #f4f2ed; border-radius: 4px;">
+                    <p style="margin: 0;">
+                      <strong>{{ relatedNpcName }}:</strong> {{ relationship }}
+                    </p>
+                  </div>
+                </div>
+                <div v-else>
+                  <p style="font-style: italic; color: #666;">No relationships generated.</p>
+                </div>
+
+                <!-- Edit NPC Button -->
+                <div class="button-group" style="margin-top: 2rem;">
+                  <cdr-button @click="startEditingNPC(index)" modifier="secondary">Edit NPC</cdr-button>
+                </div>
               </div>
-              <p>{{ npc.description_of_position }}</p>
-              <p>{{ npc.why_in_dungeon }}</p>
-              <p>{{ npc.distinctive_features_or_mannerisms }}</p>
-              <p>{{ npc.character_secret }}</p>
 
-              <h3>Relationships</h3>
-              <div v-for="(relationship, relatedNpcName) in npc.relationships" :key="relatedNpcName">
-                <p><strong>{{ relatedNpcName }}:</strong> {{ relationship }}</p>
+              <!-- If no full description yet, show short desc + "Generate Full Description" button -->
+              <div v-else>
+                <p>{{ npc.short_description }}</p>
+                <cdr-button @click="dungeonStore.generateDungeonNPC(index)"
+                  :disabled="dungeonStore.currentlyLoadingNPCs[index]">
+                  Generate Full Description
+                </cdr-button>
               </div>
-
-              <h3>Roleplaying Tips</h3>
-              <p>{{ npc.roleplaying_tips }}</p>
             </div>
 
-            <!-- If no full description yet, show short desc + "Generate Full Description" button -->
-            <div v-else>
-              <p>{{ npc.short_description }}</p>
-              <cdr-button @click="dungeonStore.generateDungeonNPC(index)"
-                :disabled="dungeonStore.currentlyLoadingNPCs[index]">
-                Generate Full Description
+            <!-- Edit Mode -->
+            <div v-else class="edit-form">
+              <h2>Edit NPC</h2>
+
+              <cdr-input v-model="npcEditForm.name" label="NPC Name" background="secondary" class="edit-field" />
+
+              <cdr-input v-model="npcEditForm.read_aloud_description" label="Read-Aloud Description"
+                background="secondary" :rows="4" tag="textarea" class="edit-field">
+                <template #helper-text-bottom>
+                  The initial description when the NPC is first encountered
+                </template>
+              </cdr-input>
+
+              <cdr-input v-model="npcEditForm.combined_details" label="NPC Details" background="secondary" :rows="10"
+                tag="textarea" class="edit-field">
+                <template #helper-text-bottom>
+                  Position, location, mannerisms, secrets, and roleplaying tips. Use double line breaks for
+                  paragraphs.
+                </template>
+              </cdr-input>
+
+              <h3>Relationships</h3>
+              <div v-if="npcEditForm.relationshipsArray.length > 0">
+                <div v-for="(relationship, relIndex) in npcEditForm.relationshipsArray" :key="relIndex"
+                  style="margin-bottom: 1.5rem; padding: 1.5rem; background: #f4f2ed; border-radius: 4px;">
+                  <cdr-input v-model="relationship.name" label="Name" background="secondary"
+                    style="margin-bottom: 1rem;" />
+                  <cdr-input v-model="relationship.description" label="Relationship Description" background="secondary"
+                    :rows="2" tag="textarea" style="margin-bottom: 1rem;" />
+                  <cdr-button size="small" @click="deleteRelationship(relIndex)" modifier="secondary">
+                    Remove Relationship
+                  </cdr-button>
+                </div>
+              </div>
+              <div v-else>
+                <p style="font-style: italic; color: #666; margin-bottom: 1rem;">
+                  No relationships to edit. Add one below or generate them in view mode first.
+                </p>
+              </div>
+
+              <cdr-button size="small" @click="addRelationship" modifier="secondary" style="margin-bottom: 1.5rem;">
+                Add Relationship
               </cdr-button>
+
+              <div class="button-group">
+                <cdr-button @click="saveEditNPC">Save Changes</cdr-button>
+                <cdr-button @click="cancelEditNPC" modifier="secondary">Cancel</cdr-button>
+              </div>
+
+              <hr style="margin: 2rem 0;">
             </div>
 
             <!-- NPC Statblock Section -->
@@ -146,6 +221,15 @@ const modelError = ref(null);
 // The CR dropdown data
 const crOptions = crList.fullArray;
 
+// Edit mode state
+const editingNPCIndex = ref(null);
+const npcEditForm = ref({
+  name: '',
+  read_aloud_description: '',
+  combined_details: '',
+  relationshipsArray: []
+});
+
 // We'll keep an object that holds per-NPC data for statblock generation
 // so each NPC can have different CR / isSpellcaster etc.
 const npcStatblockData = reactive({});
@@ -226,6 +310,102 @@ async function generateNpcStatblock(index, premium) {
     premium,
   });
 }
+
+// Helper function to combine NPC detail fields
+function combineNPCDetails(npc) {
+  if (!npc) return '';
+
+  const parts = [];
+
+  if (npc.description_of_position) {
+    parts.push(npc.description_of_position);
+  }
+
+  if (npc.why_in_dungeon) {
+    parts.push(npc.why_in_dungeon);
+  }
+
+  if (npc.distinctive_features_or_mannerisms) {
+    parts.push(npc.distinctive_features_or_mannerisms);
+  }
+
+  if (npc.character_secret) {
+    parts.push(npc.character_secret);
+  }
+
+  if (npc.roleplaying_tips) {
+    parts.push(npc.roleplaying_tips);
+  }
+
+  return parts.filter(Boolean).join('\n\n');
+}
+
+// Start editing NPC
+function startEditingNPC(index) {
+  const npc = dungeonStore.currentDungeon.npcs[index];
+  if (!npc) return;
+
+  // Convert relationships object to array
+  const relationshipsArray = [];
+  if (npc.relationships) {
+    Object.entries(npc.relationships).forEach(([name, description]) => {
+      relationshipsArray.push({ name, description });
+    });
+  }
+
+  npcEditForm.value = {
+    name: npc.name || '',
+    read_aloud_description: npc.read_aloud_description || '',
+    combined_details: combineNPCDetails(npc),
+    relationshipsArray: relationshipsArray
+  };
+
+  editingNPCIndex.value = index;
+}
+
+// Cancel editing NPC
+function cancelEditNPC() {
+  editingNPCIndex.value = null;
+}
+
+// Save edited NPC
+function saveEditNPC() {
+  if (editingNPCIndex.value === null) return;
+
+  const npc = dungeonStore.currentDungeon.npcs[editingNPCIndex.value];
+  if (!npc) return;
+
+  // Update NPC fields
+  npc.name = npcEditForm.value.name;
+  npc.read_aloud_description = npcEditForm.value.read_aloud_description;
+
+  // Store combined details
+  npc.combined_details = npcEditForm.value.combined_details;
+
+  // Convert relationships array back to object
+  const relationshipsObject = {};
+  npcEditForm.value.relationshipsArray.forEach(rel => {
+    if (rel.name && rel.description) {
+      relationshipsObject[rel.name] = rel.description;
+    }
+  });
+  npc.relationships = relationshipsObject;
+
+  // Save to localStorage
+  dungeonStore.saveDungeons();
+
+  editingNPCIndex.value = null;
+}
+
+// Delete relationship
+function deleteRelationship(relationshipIndex) {
+  npcEditForm.value.relationshipsArray.splice(relationshipIndex, 1);
+}
+
+// Add relationship
+function addRelationship() {
+  npcEditForm.value.relationshipsArray.push({ name: '', description: '' });
+}
 </script>
 
 <style scoped>
@@ -251,6 +431,20 @@ async function generateNpcStatblock(index, premium) {
 }
 
 .monster-form-button {
+  margin-top: 1rem;
+}
+
+.edit-form {
+  width: 100%;
+}
+
+.edit-field {
+  margin-bottom: 1.5rem;
+}
+
+.button-group {
+  display: flex;
+  gap: 1rem;
   margin-top: 1rem;
 }
 </style>
