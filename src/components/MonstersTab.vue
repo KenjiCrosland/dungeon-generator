@@ -31,23 +31,56 @@
               </cdr-tooltip>
             </div>
 
-            <p v-if="
-              !monster.detailedDescription &&
-              !dungeonStore.monsterLoadingStates[monster.id]?.description
-            ">
-              {{ monster.description }}
-            </p>
+            <!-- View Mode -->
+            <div v-if="editingMonsterId !== monster.id">
+              <!-- Use combined_description if available -->
+              <div v-if="monster.combined_description && !dungeonStore.monsterLoadingStates[monster.id]?.description">
+                <p v-for="(paragraph, pIndex) in monster.combined_description.split('\n\n')" :key="pIndex">
+                  {{ paragraph }}
+                </p>
+              </div>
+              <!-- Otherwise show individual fields -->
+              <div v-else-if="!dungeonStore.monsterLoadingStates[monster.id]?.description">
+                <p v-if="!monster.detailedDescription">
+                  {{ monster.description }}
+                </p>
+                <div v-if="monster.detailedDescription">
+                  <p>{{ monster.detailedDescription.intro }}</p>
+                  <p>{{ monster.detailedDescription.appearance }}</p>
+                  <p>{{ monster.detailedDescription.behaviorAbilities }}</p>
+                  <p>{{ monster.detailedDescription.lore }}</p>
+                </div>
+              </div>
+              <MonsterDescriptionSkeleton v-if="dungeonStore.monsterLoadingStates[monster.id]?.description" />
 
-            <div v-if="
-              monster.detailedDescription &&
-              !dungeonStore.monsterLoadingStates[monster.id]?.description
-            ">
-              <p>{{ monster.detailedDescription.intro }}</p>
-              <p>{{ monster.detailedDescription.appearance }}</p>
-              <p>{{ monster.detailedDescription.behaviorAbilities }}</p>
-              <p>{{ monster.detailedDescription.lore }}</p>
+              <!-- Edit Button -->
+              <div v-if="monster.detailedDescription || monster.combined_description" class="button-group"
+                style="margin-top: 1.5rem; margin-bottom: 1.5rem;">
+                <cdr-button @click="startEditingMonster(monster)" modifier="secondary" size="small">
+                  Edit Description
+                </cdr-button>
+              </div>
             </div>
-            <MonsterDescriptionSkeleton v-if="dungeonStore.monsterLoadingStates[monster.id]?.description" />
+
+            <!-- Edit Mode -->
+            <div v-else class="edit-form">
+              <h3>Edit Monster Description</h3>
+
+              <cdr-input v-model="monsterEditForm.name" label="Monster Name" background="secondary" class="edit-field" />
+
+              <cdr-input v-model="monsterEditForm.combined_description" label="Monster Description"
+                background="secondary" :rows="10" tag="textarea" class="edit-field">
+                <template #helper-text-bottom>
+                  Description including intro, appearance, behavior/abilities, and lore. Use double line breaks for
+                  paragraphs.
+                </template>
+              </cdr-input>
+
+              <div class="button-group">
+                <cdr-button @click="saveEditMonster" size="small">Save Changes</cdr-button>
+                <cdr-button @click="cancelEditMonster" modifier="secondary" size="small">Cancel</cdr-button>
+              </div>
+            </div>
 
             <!-- If monster has (or is generating) a statblock, show it -->
             <div v-if="
@@ -167,6 +200,13 @@ const props = defineProps({ premium: { type: Boolean, default: false } });
 
 const crOptions = crList.fullArray;
 
+// Edit mode state
+const editingMonsterId = ref(null);
+const monsterEditForm = ref({
+  name: '',
+  combined_description: ''
+});
+
 // This form is for creating a brand-new monster from scratch
 const statblockForm = ref({
   name: '',
@@ -256,6 +296,63 @@ async function generateNewMonster() {
     generatingStatblock.value = false;
   }
 }
+
+// Helper function to combine monster description fields
+function combineMonsterDescription(monster) {
+  if (!monster) return '';
+
+  // If already using combined_description, return it
+  if (monster.combined_description) {
+    return monster.combined_description;
+  }
+
+  // Otherwise combine detailedDescription fields
+  if (monster.detailedDescription) {
+    const parts = [];
+    if (monster.detailedDescription.intro) parts.push(monster.detailedDescription.intro);
+    if (monster.detailedDescription.appearance) parts.push(monster.detailedDescription.appearance);
+    if (monster.detailedDescription.behaviorAbilities) parts.push(monster.detailedDescription.behaviorAbilities);
+    if (monster.detailedDescription.lore) parts.push(monster.detailedDescription.lore);
+    return parts.join('\n\n');
+  }
+
+  // Fallback to basic description
+  return monster.description || '';
+}
+
+// Start editing monster description
+function startEditingMonster(monster) {
+  if (!monster) return;
+
+  monsterEditForm.value = {
+    name: monster.name || '',
+    combined_description: combineMonsterDescription(monster)
+  };
+
+  editingMonsterId.value = monster.id;
+}
+
+// Cancel editing monster
+function cancelEditMonster() {
+  editingMonsterId.value = null;
+}
+
+// Save edited monster description
+function saveEditMonster() {
+  if (editingMonsterId.value === null) return;
+
+  const monster = dungeonStore.currentDungeon.monsters.find(m => m.id === editingMonsterId.value);
+  if (!monster) return;
+
+  // Update monster fields
+  monster.name = monsterEditForm.value.name;
+  monster.combined_description = monsterEditForm.value.combined_description;
+
+  // Save to localStorage
+  dungeonStore.saveDungeons();
+
+  editingMonsterId.value = null;
+}
 </script>
 
 <style lang="scss" scoped>
@@ -303,5 +400,20 @@ async function generateNewMonster() {
   display: grid;
   grid-template-columns: 1fr;
   gap: 2rem;
+}
+
+.edit-form {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+.edit-field {
+  margin-bottom: 1.5rem;
+}
+
+.button-group {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
 }
 </style>
