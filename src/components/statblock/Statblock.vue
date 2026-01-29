@@ -135,7 +135,14 @@
                     <li v-for="(ability, index) in editedAbilities" :key="index">
                         <input v-model="ability.name" />
                         <textarea v-model="ability.description"></textarea>
-                        <button class="remove-button" @click="removeAbility(index)">Remove</button>
+                        <div v-if="loadingAbilityIndices.has(index)" class="item-loading">
+                            Regenerating...
+                        </div>
+                        <div v-else class="action-buttons">
+                            <button class="regenerate-button-small"
+                                @click="regenerateAbility(index)">Regenerate</button>
+                            <button class="remove-button" @click="removeAbility(index)">Remove</button>
+                        </div>
                     </li>
                     <button class="add-button" size="small" :full-width="true" modifier="secondary"
                         @click="addAbility">Add
@@ -177,7 +184,13 @@
                     <li v-for="(action, index) in editedActions" :key="'action-' + index">
                         <input v-model="action.name" />
                         <textarea v-model="action.description"></textarea>
-                        <button class="remove-button" @click="removeAction(index)">Remove</button>
+                        <div v-if="loadingActionIndices.has(index)" class="item-loading">
+                            Regenerating...
+                        </div>
+                        <div v-else class="action-buttons">
+                            <button class="regenerate-button-small" @click="regenerateAction(index)">Regenerate</button>
+                            <button class="remove-button" @click="removeAction(index)">Remove</button>
+                        </div>
                     </li>
                 </div>
                 <div v-if="loadingActions">
@@ -216,7 +229,14 @@
                             <li v-for="(action, index) in editedLegendaryActions" :key="'legendary-' + index">
                                 <input v-model="action.name" />
                                 <textarea v-model="action.description"></textarea>
-                                <button class="remove-button" @click="removeLegendaryAction(index)">Remove</button>
+                                <div v-if="loadingLegendaryActionIndices.has(index)" class="item-loading">
+                                    Regenerating...
+                                </div>
+                                <div v-else class="action-buttons">
+                                    <button class="regenerate-button-small"
+                                        @click="regenerateLegendaryAction(index)">Regenerate</button>
+                                    <button class="remove-button" @click="removeLegendaryAction(index)">Remove</button>
+                                </div>
                             </li>
                             <button class="add-button" size="small" :full-width="true" modifier="secondary"
                                 @click="addLegendaryAction">Add
@@ -245,7 +265,7 @@ import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { CdrButton } from '@rei/cedar';
 import CRtoXP from '../../data/cr-to-xp.json';
 import { generateGptResponse } from "../../util/open-ai.mjs";
-import { legendaryActionsPrompt, actionsPrompt, monsterAbilitiesPrompt } from "../../prompts/statblock-edit-prompts.mjs";
+import { legendaryActionsPrompt, actionsPrompt, monsterAbilitiesPrompt, singleAbilityPrompt, singleActionPrompt, singleLegendaryActionPrompt } from "../../prompts/statblock-edit-prompts.mjs";
 import StatblockSkeletonPtOne from '../skeletons/StatblockSkeletonPtOne.vue';
 import StatblockSkeletonPtTwo from '../skeletons/StatblockSkeletonPtTwo.vue';
 import StatblockAbilitiesSkeleton from '../skeletons/StatblockAbilitiesSkeleton.vue';
@@ -294,6 +314,9 @@ const propertyLineClass = computed(() => isEditing.value ? 'property-line editin
 const loadingAbilities = ref(false);
 const loadingActions = ref(false);
 const loadingLegendaryActions = ref(false);
+const loadingAbilityIndices = ref(new Set());
+const loadingActionIndices = ref(new Set());
+const loadingLegendaryActionIndices = ref(new Set());
 
 //create a formatted array of CRs but make sure that they're sorted in ascending order. It should have 0, the fractions, and the whole numbers
 function parseCR(cr) {
@@ -438,6 +461,21 @@ const editMonsterValidation = (json) => {
     }
 };
 
+const singleItemValidation = (json) => {
+    try {
+        const item = JSON.parse(json);
+        if (Array.isArray(item)) {
+            return false;
+        }
+        if (!item.name || !item.description) {
+            return false;
+        }
+        return true;
+    } catch (e) {
+        return false;
+    }
+};
+
 async function generateLegendaryActions(monster, userSuggestion) {
     if (!props.premium) {
         alert('Generation of abilities, actions, and legendary actions in edit mode is only available to $5 patrons. Please consider becoming a Patron to access the premium statblock generator');
@@ -481,6 +519,66 @@ async function generateAbilities(monster, userSuggestion) {
         editedAbilities.value = abilities;
     } finally {
         loadingAbilities.value = false;
+    }
+}
+
+async function regenerateAbility(index) {
+    if (!props.premium) {
+        alert('Generation of abilities, actions, and legendary actions in edit mode is only available to $5 patrons. Please consider becoming a Patron to access the premium statblock generator');
+        return;
+    }
+    const currentAbility = editedAbilities.value[index];
+    const prompt = singleAbilityPrompt(editedMonster.value, currentAbility);
+    try {
+        loadingAbilityIndices.value.add(index);
+        const newAbilityObject = await generateGptResponse(prompt, singleItemValidation, 3);
+        const newAbility = JSON.parse(newAbilityObject);
+        editedAbilities.value[index] = newAbility;
+    } catch (e) {
+        console.error('Error regenerating ability:', e);
+        alert('Failed to regenerate ability. Please try again.');
+    } finally {
+        loadingAbilityIndices.value.delete(index);
+    }
+}
+
+async function regenerateAction(index) {
+    if (!props.premium) {
+        alert('Generation of abilities, actions, and legendary actions in edit mode is only available to $5 patrons. Please consider becoming a Patron to access the premium statblock generator');
+        return;
+    }
+    const currentAction = editedActions.value[index];
+    const prompt = singleActionPrompt(editedMonster.value, currentAction);
+    try {
+        loadingActionIndices.value.add(index);
+        const newActionObject = await generateGptResponse(prompt, singleItemValidation, 3);
+        const newAction = JSON.parse(newActionObject);
+        editedActions.value[index] = newAction;
+    } catch (e) {
+        console.error('Error regenerating action:', e);
+        alert('Failed to regenerate action. Please try again.');
+    } finally {
+        loadingActionIndices.value.delete(index);
+    }
+}
+
+async function regenerateLegendaryAction(index) {
+    if (!props.premium) {
+        alert('Generation of abilities, actions, and legendary actions in edit mode is only available to $5 patrons. Please consider becoming a Patron to access the premium statblock generator');
+        return;
+    }
+    const currentAction = editedLegendaryActions.value[index];
+    const prompt = singleLegendaryActionPrompt(editedMonster.value, currentAction);
+    try {
+        loadingLegendaryActionIndices.value.add(index);
+        const newActionObject = await generateGptResponse(prompt, singleItemValidation, 3);
+        const newAction = JSON.parse(newActionObject);
+        editedLegendaryActions.value[index] = newAction;
+    } catch (e) {
+        console.error('Error regenerating legendary action:', e);
+        alert('Failed to regenerate legendary action. Please try again.');
+    } finally {
+        loadingLegendaryActionIndices.value.delete(index);
     }
 }
 
@@ -628,15 +726,21 @@ textarea {
     width: 100%;
 }
 
+.action-buttons {
+    display: flex;
+    gap: .5rem;
+    margin-top: .5rem;
+}
+
 .remove-button,
-.add-button {
+.add-button,
+.regenerate-button-small {
     background-color: #fefdf9;
     color: #8d7349;
     font-weight: bold;
     border: 1px solid #cbab77;
     padding: .5rem;
     cursor: pointer;
-    width: 10rem;
     border-radius: 3px;
 
     &:hover {
@@ -648,6 +752,19 @@ textarea {
     &:focus {
         outline: 2px solid #facc81;
     }
+}
+
+.remove-button,
+.regenerate-button-small {
+    width: 11rem;
+}
+
+.item-loading {
+    margin-top: .5rem;
+    padding: .5rem;
+    color: #7A200D;
+    font-style: italic;
+    font-size: 13px;
 }
 
 .add-button {

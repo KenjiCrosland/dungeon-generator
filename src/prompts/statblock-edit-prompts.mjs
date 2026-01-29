@@ -133,3 +133,69 @@ export function monsterAbilitiesPrompt(monster, userSuggestion) {
   These abilities should not be legendary actions or actions, they should be passive abilities that the creature has.`;
   return prompt;
 }
+
+export function singleAbilityPrompt(monster, currentAbility) {
+  let prompt = `Here is a monster object:
+  ${JSON.stringify(monster, null, 2)}
+
+  The monster currently has this ability:
+  ${JSON.stringify(currentAbility, null, 2)}
+
+  Please generate a single NEW passive ability to replace it. The new ability should:
+  - Be completely different from the current one
+  - Match the flavor and CR of the creature
+  - Be a passive ability (not an action or legendary action)
+  - Be interesting and mechanically sound
+
+  Return a single ability object (not an array) in JSON format with "name" and "description" properties.`;
+  return prompt;
+}
+
+export function singleActionPrompt(monster, currentAction) {
+  let CR = getChallengeRating(monster.challenge_rating);
+  let type = monster.monsterType || 'Random';
+  let template = getRandomTemplateByCRAndType(CR, type);
+
+  let prompt = `Here is a monster object:
+  ${JSON.stringify(monster, null, 2)}
+
+  The monster currently has this action:
+  ${JSON.stringify(currentAction, null, 2)}
+
+  Please generate a single NEW action to replace it. Use the following template as a guide for appropriate damage and to-hit bonuses:
+  ${JSON.stringify(template.actions[0], null, 2)}
+
+  The new action should:
+  - Be completely different from the current one
+  - Match the damage and to-hit bonuses of the template
+  - Match the flavor of the creature
+  - Be interesting and mechanically sound
+
+  When the template says the creature is 'affected by a condition' choose a condition from: Blinded, Charmed, Deafened, Frightened, Grappled, Incapacitated, Paralyzed, Petrified, Poisoned, Prone, Restrained, Stunned, Unconscious.
+
+  Return a single action object (not an array) in JSON format with "name" and "description" properties.`;
+  return prompt;
+}
+
+export function singleLegendaryActionPrompt(monster, currentAction) {
+  let prompt = `Here is a monster object:
+  ${JSON.stringify(monster, null, 2)}
+
+  The monster currently has this legendary action:
+  ${JSON.stringify(currentAction, null, 2)}
+
+  Please generate a single NEW legendary action to replace it. The new legendary action should:
+  - Be completely different from the current one
+  - Include the cost (1, 2, or 3 actions) in the name like "(Costs X Action)" or "(Costs X Actions)"
+  - Match the CR and power level of the monster
+  - Be interesting and challenging for players
+
+  Here is an example structure:
+  {
+    "name": "Legendary Action Name (Costs 2 Actions)",
+    "description": "Description of the legendary action."
+  }
+
+  Return a single legendary action object (not an array) in JSON format with "name" and "description" properties.`;
+  return prompt;
+}
